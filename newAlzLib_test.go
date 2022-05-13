@@ -7,9 +7,9 @@ import (
 )
 
 func Test_newAlzLib(t *testing.T) {
-	a, err := New("./testdata/lib")
+	az, err := New("./testdata/lib")
 	assert.NilError(t, err)
-	assert.Equal(t, len(a.PolicyAssignments), 35)
-	assert.Equal(t, len(a.PolicyDefinitions), 104)
-	assert.Equal(t, len(a.PolicySetDefinitions), 7)
+	assert.Equal(t, len(az.PolicyAssignments), 35)
+	assert.Equal(t, len(az.PolicyDefinitions), 104)
+	assert.Equal(t, len(az.PolicySetDefinitions), 7)
 }
