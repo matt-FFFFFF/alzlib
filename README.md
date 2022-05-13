@@ -1,0 +1,3 @@
+# alz-lib - a go module for reading ALZ lib definitions
+
+tbc...
