@@ -63,8 +63,13 @@ func (alzlib *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	// if the file is a policy definition
 	case strings.HasPrefix(n, policyDefinitionPrefix):
 		err = readAndProcessFile(alzlib, path, processPolicyDefinition)
+
+	// if the file is a policy set definition
+	case strings.HasPrefix(n, policySetDefinitionPrefix):
+		err = readAndProcessFile(alzlib, path, processPolicySetDefinition)
 	}
 
+	// If there's an error, wrap it with the file path
 	if err != nil {
 		err = fmt.Errorf("error processing file %s: %s", path, err)
 	}
@@ -73,6 +78,7 @@ func (alzlib *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 
 // readAndProcessFile reads the file at the supplied path and processes it using the supplied processFunc
 func readAndProcessFile(alzlib *AlzLib, path string, processFn processFunc) error {
+	// open the file and read the contents
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -83,6 +89,7 @@ func readAndProcessFile(alzlib *AlzLib, path string, processFn processFunc) erro
 		return err
 	}
 
+	// pass the  data to the supplied process function
 	if err := processFn(alzlib, data); err != nil {
 		return err
 	}
