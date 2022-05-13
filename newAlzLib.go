@@ -22,23 +22,23 @@ func New(dir string) (*AlzLib, error) {
 		return nil, err
 	}
 
-	alzlib := &AlzLib{}
+	az := &AlzLib{}
 
 	// Walk the directory and process files
 	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("Error walking directory %s: %s", dir, err)
+			return fmt.Errorf("error walking directory %s: %s", dir, err)
 		}
 		// Skip directories
 		if info.IsDir() {
 			return nil
 		}
-		return alzlib.processLibFile(path, info)
+		return az.processLibFile(path, info)
 	}); err != nil {
 		return nil, err
 	}
 
-	return alzlib, nil
+	return az, nil
 }
 
 // checkDirExists checks if the supplied directory exists and is a directory
@@ -55,18 +55,22 @@ func checkDirExists(dir string) error {
 }
 
 // processLibFile processes the supplied file and adds the processed contents to the struct for validation later
-func (alzlib *AlzLib) processLibFile(path string, info fs.FileInfo) error {
+func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	err := error(nil)
 	// process by file type
 	switch n := strings.ToLower(info.Name()); {
 
 	// if the file is a policy definition
 	case strings.HasPrefix(n, policyDefinitionPrefix):
-		err = readAndProcessFile(alzlib, path, processPolicyDefinition)
+		err = readAndProcessFile(az, path, processPolicyDefinition)
 
 	// if the file is a policy set definition
 	case strings.HasPrefix(n, policySetDefinitionPrefix):
-		err = readAndProcessFile(alzlib, path, processPolicySetDefinition)
+		err = readAndProcessFile(az, path, processPolicySetDefinition)
+
+		// if the file is a policy assignment
+	case strings.HasPrefix(n, policyAssignmentPrefix):
+		err = readAndProcessFile(az, path, processPolicyAssignment)
 	}
 
 	// If there's an error, wrap it with the file path

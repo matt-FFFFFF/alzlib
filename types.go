@@ -6,10 +6,10 @@ import (
 
 type AlzLib struct {
 	Archetypes              map[string]Archetype
-	policyDefinitions       []armpolicy.Definition
-	policySetDefinitions    []armpolicy.SetDefinition
-	policyAssignments       []armpolicy.Assignment
-	libArchetypeDefinitions []libArchetypeDefinition
+	PolicyDefinitions       []armpolicy.Definition
+	PolicySetDefinitions    []armpolicy.SetDefinition
+	PolicyAssignments       []armpolicy.Assignment
+	LibArchetypeDefinitions []LibArchetypeDefinition
 }
 
 type Archetype struct {
@@ -18,7 +18,7 @@ type Archetype struct {
 	PolicySetDefinitions map[string]armpolicy.SetDefinition
 }
 
-type libArchetypeDefinition struct {
+type LibArchetypeDefinition struct {
 	Id                   string
 	PolicyAssignments    []string `json:"policy_assignments"`
 	PolicyDefinitions    []string `json:"policy_definitions"`
