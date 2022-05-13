@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
 // These are the file prefixes for the resource types
@@ -22,7 +24,13 @@ func New(dir string) (*AlzLib, error) {
 		return nil, err
 	}
 
-	az := &AlzLib{}
+	az := &AlzLib{
+		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
+		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
+		Archetypes:              make(map[string]Archetype),
+		libArchetypeDefinitions: make([]libArchetypeDefinition, 0),
+	}
 
 	// Walk the directory and process files
 	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
@@ -36,6 +44,10 @@ func New(dir string) (*AlzLib, error) {
 		return az.processLibFile(path, info)
 	}); err != nil {
 		return nil, err
+	}
+
+	if err := az.generateArchetypes(); err != nil {
+		return nil, fmt.Errorf("error generating archetypes: %s", err)
 	}
 
 	return az, nil
@@ -75,7 +87,7 @@ func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	// if the file is an archetype definition
 	// anonymous func for now, will add functionality later
 	case strings.HasPrefix(n, archetypeDefinitionPrefix):
-		err = readAndProcessFile(az, path, func(alzlib *AlzLib, data []byte) error { return nil })
+		err = readAndProcessFile(az, path, processArchetypeDefinition)
 	}
 
 	// If there's an error, wrap it with the file path
@@ -86,7 +98,7 @@ func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 }
 
 // readAndProcessFile reads the file at the supplied path and processes it using the supplied processFunc
-func readAndProcessFile(alzlib *AlzLib, path string, processFn processFunc) error {
+func readAndProcessFile(az *AlzLib, path string, processFn processFunc) error {
 	// open the file and read the contents
 	f, err := os.Open(path)
 	if err != nil {
@@ -99,9 +111,67 @@ func readAndProcessFile(alzlib *AlzLib, path string, processFn processFunc) erro
 	}
 
 	// pass the  data to the supplied process function
-	if err := processFn(alzlib, data); err != nil {
+	if err := processFn(az, data); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// generateArchetypes generates the archetype definitions from the supplied data
+func (az *AlzLib) generateArchetypes() error {
+	for _, ad := range az.libArchetypeDefinitions {
+
+		// create the archetype
+		if _, exists := az.Archetypes[ad.id]; exists {
+			return fmt.Errorf("duplicate archetype id: %s", ad.id)
+		}
+
+		az.Archetypes[ad.id] = Archetype{
+			PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+			PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+			PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		}
+
+		// add the policy set definitions to the Archetype struct
+		for _, ps := range ad.PolicySetDefinitions {
+			if _, exists := az.Archetypes[ad.id].PolicySetDefinitions[ps]; exists {
+				return fmt.Errorf("duplicate policy set definition in archetype %s: %s", ad.id, ps)
+			}
+			// look up the policy assignment to check we have it in the library
+			p, ok := az.PolicySetDefinitions[ps]
+			if !ok {
+				return fmt.Errorf("policy set definition %s not found for archetype %s", ps, ad.id)
+			}
+			az.Archetypes[ad.id].PolicySetDefinitions[ps] = p
+		}
+
+		// add the policy definitions to the Archetype struct
+		for _, pd := range ad.PolicyDefinitions {
+			if _, exists := az.Archetypes[ad.id].PolicyDefinitions[pd]; exists {
+				return fmt.Errorf("duplicate policy definition in archetype %s: %s", ad.id, pd)
+			}
+			// look up the policy assignment to check we have it in the library
+			p, ok := az.PolicyDefinitions[pd]
+			if !ok {
+				return fmt.Errorf("policy definition %s not found for archetype %s", pd, ad.id)
+			}
+			az.Archetypes[ad.id].PolicyDefinitions[pd] = p
+		}
+
+		// add policy assignments to the Archetype struct
+		for _, pa := range ad.PolicyAssignments {
+			if _, exists := az.Archetypes[ad.id].PolicyAssignments[pa]; exists {
+				return fmt.Errorf("duplicate policy assignment in archetype %s: %s", ad.id, pa)
+			}
+			// look up the policy assignment to check we have it in the library
+			p, ok := az.PolicyAssignments[pa]
+			if !ok {
+				return fmt.Errorf("policy assignment %s not found for archetype %s", pa, ad.id)
+			}
+			az.Archetypes[ad.id].PolicyAssignments[pa] = p
+		}
+
+	}
 	return nil
 }

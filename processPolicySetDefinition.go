@@ -12,6 +12,9 @@ func processPolicySetDefinition(az *AlzLib, data []byte) error {
 	if err := json.Unmarshal(data, psd); err != nil {
 		return fmt.Errorf("error unmarshalling policy set definition: %s", err)
 	}
-	az.PolicySetDefinitions = append(az.PolicySetDefinitions, *psd)
+	if *psd.Name == "" {
+		return fmt.Errorf("policy set definition name is empty")
+	}
+	az.PolicySetDefinitions[*psd.Name] = psd
 	return nil
 }

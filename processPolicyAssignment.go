@@ -12,6 +12,9 @@ func processPolicyAssignment(az *AlzLib, data []byte) error {
 	if err := json.Unmarshal(data, pa); err != nil {
 		return fmt.Errorf("error unmarshalling policy assignment: %s", err)
 	}
-	az.PolicyAssignments = append(az.PolicyAssignments, *pa)
+	if *pa.Name == "" {
+		return fmt.Errorf("policy assignment name is empty")
+	}
+	az.PolicyAssignments[*pa.Name] = pa
 	return nil
 }

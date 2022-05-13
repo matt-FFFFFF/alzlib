@@ -9,12 +9,14 @@ import (
 
 func Test_processSetPolicyDefinition_valid(t *testing.T) {
 	sampleData := getSamplePolicySetDefinition()
-	az := &AlzLib{}
+	az := &AlzLib{
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+	}
 
 	assert.NilError(t, processPolicySetDefinition(az, sampleData))
 	assert.Equal(t, len(az.PolicySetDefinitions), 1)
-	assert.Equal(t, *az.PolicySetDefinitions[0].Name, "Deploy-MDFC-Config")
-	assert.Equal(t, *az.PolicySetDefinitions[0].Properties.PolicyType, armpolicy.PolicyTypeCustom)
+	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Name, "Deploy-MDFC-Config")
+	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
 }
 
 func getSamplePolicySetDefinition() []byte {

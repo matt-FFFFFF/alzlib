@@ -9,12 +9,14 @@ import (
 
 func Test_processPolicyDefinition_valid(t *testing.T) {
 	sampleData := getSamplePolicyDefinition()
-	az := &AlzLib{}
+	az := &AlzLib{
+		PolicyDefinitions: make(map[string]*armpolicy.Definition),
+	}
 
 	assert.NilError(t, processPolicyDefinition(az, sampleData))
 	assert.Equal(t, len(az.PolicyDefinitions), 1)
-	assert.Equal(t, *az.PolicyDefinitions[0].Name, "Append-AppService-httpsonly")
-	assert.Equal(t, *az.PolicyDefinitions[0].Properties.PolicyType, armpolicy.PolicyTypeCustom)
+	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Name, "Append-AppService-httpsonly")
+	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
 }
 
 func getSamplePolicyDefinition() []byte {

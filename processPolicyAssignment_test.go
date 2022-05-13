@@ -3,17 +3,20 @@ package alzlib
 import (
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"gotest.tools/v3/assert"
 )
 
 func Test_processPolicyAssignment_valid(t *testing.T) {
 	sampleData := getSamplePolicyAssignment()
-	az := &AlzLib{}
+	az := &AlzLib{
+		PolicyAssignments: make(map[string]*armpolicy.Assignment),
+	}
 
 	assert.NilError(t, processPolicyAssignment(az, sampleData))
 	assert.Equal(t, len(az.PolicyAssignments), 1)
-	assert.Equal(t, *az.PolicyAssignments[0].Name, "Deny-Storage-http")
-	assert.Equal(t, *az.PolicyAssignments[0].Properties.DisplayName, "Secure transfer to storage accounts should be enabled")
+	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Name, "Deny-Storage-http")
+	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Properties.DisplayName, "Secure transfer to storage accounts should be enabled")
 }
 
 func getSamplePolicyAssignment() []byte {
