@@ -4,17 +4,17 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	"gotest.tools/v3/assert"
 )
 
-func Test_processPolicyDefinition(t *testing.T) {
+func Test_processPolicyDefinition_valid(t *testing.T) {
 	sampleData := getSamplePolicyDefinition()
-	alzlib := &AlzLib{
-		policyDefinitions: make([]armpolicy.Definition, 0),
-	}
-	if err := processPolicyDefinition(alzlib, sampleData); err != nil {
-		t.Errorf("Error processing policy definition: %s", err)
-	}
+	alzlib := &AlzLib{}
 
+	assert.NilError(t, processPolicyDefinition(alzlib, sampleData))
+	assert.Equal(t, len(alzlib.policyDefinitions), 1)
+	assert.Equal(t, *alzlib.policyDefinitions[0].Name, "Append-AppService-httpsonly")
+	assert.Equal(t, *alzlib.policyDefinitions[0].Properties.PolicyType, armpolicy.PolicyTypeCustom)
 }
 
 func getSamplePolicyDefinition() []byte {
