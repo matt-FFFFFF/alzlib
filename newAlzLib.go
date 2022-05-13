@@ -68,9 +68,14 @@ func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	case strings.HasPrefix(n, policySetDefinitionPrefix):
 		err = readAndProcessFile(az, path, processPolicySetDefinition)
 
-		// if the file is a policy assignment
+	// if the file is a policy assignment
 	case strings.HasPrefix(n, policyAssignmentPrefix):
 		err = readAndProcessFile(az, path, processPolicyAssignment)
+
+	// if the file is an archetype definition
+	// anonymous func for now, will add functionality later
+	case strings.HasPrefix(n, archetypeDefinitionPrefix):
+		err = readAndProcessFile(az, path, func(alzlib *AlzLib, data []byte) error { return nil })
 	}
 
 	// If there's an error, wrap it with the file path
