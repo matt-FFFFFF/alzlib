@@ -1,7 +1,6 @@
 package alzlib
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -28,7 +27,7 @@ func New(dir string) (*AlzLib, error) {
 	// Walk the directory and process files
 	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-			return errors.New(fmt.Sprintf("Error walking directory %s: %s", dir, err))
+			return fmt.Errorf("Error walking directory %s: %s", dir, err)
 		}
 		// Skip directories
 		if info.IsDir() {
@@ -39,7 +38,7 @@ func New(dir string) (*AlzLib, error) {
 		return nil, err
 	}
 
-	return &AlzLib{}, nil
+	return alzlib, nil
 }
 
 // checkDirExists checks if the supplied directory exists and is a directory
@@ -50,7 +49,7 @@ func checkDirExists(dir string) error {
 	}
 	// The error is nil, so let's check if it's actually a directory
 	if !fs.IsDir() {
-		return errors.New(fmt.Sprintf("%s is not a directory and it should be.", dir))
+		return fmt.Errorf("%s is not a directory and it should be", dir)
 	}
 	return nil
 }
@@ -58,14 +57,18 @@ func checkDirExists(dir string) error {
 // processLibFile processes the supplied file and adds the processed contents to the struct for validation later
 func (alzlib *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	err := error(nil)
+	// process by file type
 	switch n := strings.ToLower(info.Name()); {
-	case strings.HasPrefix(n, archetypeDefinitionPrefix):
+
+	// if the file is a policy definition
+	case strings.HasPrefix(n, policyDefinitionPrefix):
 		err = readAndProcessFile(alzlib, path, processPolicyDefinition)
 	}
+
 	if err != nil {
-		err = errors.New(fmt.Sprintf("Error processing file %s: %s", path, err))
+		err = fmt.Errorf("error processing file %s: %s", path, err)
 	}
-	return nil
+	return err
 }
 
 // readAndProcessFile reads the file at the supplied path and processes it using the supplied processFunc
