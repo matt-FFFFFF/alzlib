@@ -2,7 +2,7 @@
 
 This module provides a go library for reading [Azure Landing Zones](https://github.com/Azure/terraform-azurerm-caf-enterprise-scale) Terraform module lib definitions.
 
-It uses the Azure SDK for Go
+It uses the Azure SDK for Go to get the data types required:
 
 * [github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy](https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/resourcemanager/resources/armpolicy)
 
