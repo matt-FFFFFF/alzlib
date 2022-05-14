@@ -24,3 +24,24 @@ type Archetype struct {
   PolicySetDefinitions map[string]*armpolicy.SetDefinition
 }
 ```
+
+## Usage
+
+```go
+package main
+
+import (
+  "fmt"
+  "log"
+
+  "github.com/matt-FFFFFF/alzlib"
+)
+
+func main() {
+  lib, err := alzlib.New("./lib")
+  if err != nil {
+    log.Fatal(err)
+  }
+  fmt.Printf("Found %d archetypes!", len(lib.Archetypes))
+}
+```
