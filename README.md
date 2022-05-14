@@ -14,6 +14,7 @@ type AlzLib struct {
   PolicyDefinitions       map[string]*armpolicy.Definition
   PolicySetDefinitions    map[string]*armpolicy.SetDefinition
   PolicyAssignments       map[string]*armpolicy.Assignment
+  // This is not exported and only used on the initial load
   libArchetypeDefinitions []libArchetypeDefinition
 }
 
