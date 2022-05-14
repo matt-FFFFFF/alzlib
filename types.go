@@ -5,10 +5,11 @@ import (
 )
 
 type AlzLib struct {
-	Archetypes              map[string]Archetype
-	PolicyDefinitions       map[string]*armpolicy.Definition
-	PolicySetDefinitions    map[string]*armpolicy.SetDefinition
-	PolicyAssignments       map[string]*armpolicy.Assignment
+	Archetypes           map[string]Archetype
+	PolicyDefinitions    map[string]*armpolicy.Definition
+	PolicySetDefinitions map[string]*armpolicy.SetDefinition
+	PolicyAssignments    map[string]*armpolicy.Assignment
+	// This is not exported and only used on the initial load
 	libArchetypeDefinitions []libArchetypeDefinition
 }
 
