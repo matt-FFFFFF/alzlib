@@ -25,9 +25,9 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 	ptype := armpolicy.ParameterTypeString
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*libArchetypeDefinition{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				id:                "testarchetype",
+				Id:                "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{tdname},
 				Config: &libArchetypeDefinitionConfig{
