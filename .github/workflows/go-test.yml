@@ -8,8 +8,6 @@ on:
       - ".github/**"
       - ".vscode/**"
   pull_request:
-    branches:
-      - main
 
 
 jobs:

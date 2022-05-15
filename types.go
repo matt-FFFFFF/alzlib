@@ -38,7 +38,7 @@ type libArchetypeDefinition struct {
 
 // libArchetypeConfig is a representation of the archetype_config parameters
 // that are used in the archetype definition files.
-//
+// .
 // They override any paremeters defined in the policy assignment files.
 type libArchetypeDefinitionConfig struct {
 	Parameters    map[string]interface{} `json:"parameters"`
