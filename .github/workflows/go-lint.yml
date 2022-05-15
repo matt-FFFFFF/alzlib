@@ -9,13 +9,10 @@ name: Lint code base
 # Start the job on all push #
 #############################
 on:
-  push:
-    branches-ignore: [master, main]
-    # Remove the line above to run when pushing to master
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
 
 ###############
 # Set the Job #
@@ -23,7 +20,7 @@ on:
 jobs:
   build:
     # Name the Job
-    name: Lint Code Base
+    name: Lint code base
     # Set the agent to run on
     runs-on: ubuntu-latest
 
@@ -36,10 +33,6 @@ jobs:
       ##########################
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          # Full git history is needed to get a proper list of changed files within `super-linter`
-          fetch-depth: 0
-
 
       - uses: actions/setup-go@v3
         with:
