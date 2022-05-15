@@ -47,6 +47,7 @@ jobs:
         uses: github/super-linter/slim@v4
         env:
           DEFAULT_BRANCH: master
+          FILTER_REGEX_EXCLUDE: '^vendor/'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: true
           VALIDATE_GO: true
