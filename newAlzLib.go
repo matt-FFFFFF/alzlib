@@ -121,58 +121,87 @@ func readAndProcessFile(az *AlzLib, path string, processFn processFunc) error {
 // generateArchetypes generates the archetype definitions from the supplied data
 // in the libArchetypeDefinitions struct, PolicyDefinitions, PolicySetDefinitions, and PolicyAssignments maps
 func (az *AlzLib) generateArchetypes() error {
-	for _, ad := range az.libArchetypeDefinitions {
+	for _, lad := range az.libArchetypeDefinitions {
 
-		// create the archetype
-		if _, exists := az.Archetypes[ad.id]; exists {
-			return fmt.Errorf("duplicate archetype id: %s", ad.id)
+		// create the archetype and add it to the AlzLib
+		if _, exists := az.Archetypes[lad.id]; exists {
+			return fmt.Errorf("duplicate archetype id: %s", lad.id)
 		}
 
-		az.Archetypes[ad.id] = &ArchetypeDefinition{
+		az.Archetypes[lad.id] = &ArchetypeDefinition{
 			PolicyDefinitions:    make(map[string]armpolicy.Definition),
 			PolicyAssignments:    make(map[string]armpolicy.Assignment),
 			PolicySetDefinitions: make(map[string]armpolicy.SetDefinition),
 		}
 
 		// add the policy set definitions to the Archetype struct
-		for _, ps := range ad.PolicySetDefinitions {
-			if _, exists := az.Archetypes[ad.id].PolicySetDefinitions[ps]; exists {
-				return fmt.Errorf("duplicate policy set definition in archetype %s: %s", ad.id, ps)
+		// range over the strings in in the libArchetypeDefinition array
+		for _, ps := range lad.PolicySetDefinitions {
+			if _, exists := az.Archetypes[lad.id].PolicySetDefinitions[ps]; exists {
+				return fmt.Errorf("duplicate policy set definition in archetype %s: %s", lad.id, ps)
 			}
-			// look up the policy assignment to check we have it in the library
+			// look up the policy set definition to check we have it in the library
 			p, ok := az.PolicySetDefinitions[ps]
 			if !ok {
-				return fmt.Errorf("policy set definition %s not found for archetype %s", ps, ad.id)
+				return fmt.Errorf("policy set definition %s not found for archetype %s", ps, lad.id)
 			}
-			az.Archetypes[ad.id].PolicySetDefinitions[ps] = *p
+			az.Archetypes[lad.id].PolicySetDefinitions[ps] = *p
 		}
 
 		// add the policy definitions to the Archetype struct
-		for _, pd := range ad.PolicyDefinitions {
-			if _, exists := az.Archetypes[ad.id].PolicyDefinitions[pd]; exists {
-				return fmt.Errorf("duplicate policy definition in archetype %s: %s", ad.id, pd)
+		// range over the strings in in the libArchetypeDefinition array
+		for _, pd := range lad.PolicyDefinitions {
+			if _, exists := az.Archetypes[lad.id].PolicyDefinitions[pd]; exists {
+				return fmt.Errorf("duplicate policy definition in archetype %s: %s", lad.id, pd)
 			}
-			// look up the policy assignment to check we have it in the library
+			// look up the policy definitions to check we have it in the library
 			p, ok := az.PolicyDefinitions[pd]
 			if !ok {
-				return fmt.Errorf("policy definition %s not found for archetype %s", pd, ad.id)
+				return fmt.Errorf("policy definition %s not found for archetype %s", pd, lad.id)
 			}
-			az.Archetypes[ad.id].PolicyDefinitions[pd] = *p
+			az.Archetypes[lad.id].PolicyDefinitions[pd] = *p
 		}
 
-		// add policy assignments to the Archetype struct
-		for _, pa := range ad.PolicyAssignments {
-			if _, exists := az.Archetypes[ad.id].PolicyAssignments[pa]; exists {
-				return fmt.Errorf("duplicate policy assignment in archetype %s: %s", ad.id, pa)
+		// add the policy assignments to the Archetype struct
+		// range over the strings in in the libArchetypeDefinition array
+		for _, pa := range lad.PolicyAssignments {
+			if _, exists := az.Archetypes[lad.id].PolicyAssignments[pa]; exists {
+				return fmt.Errorf("duplicate policy assignment in archetype %s: %s", lad.id, pa)
 			}
 			// look up the policy assignment to check we have it in the library
 			p, ok := az.PolicyAssignments[pa]
 			if !ok {
-				return fmt.Errorf("policy assignment %s not found for archetype %s", pa, ad.id)
+				return fmt.Errorf("policy assignment %s not found for archetype %s", pa, lad.id)
 			}
-			az.Archetypes[ad.id].PolicyAssignments[pa] = *p
+			az.Archetypes[lad.id].PolicyAssignments[pa] = *p
 		}
 
+		// Update policy assignment properties with any defined in the archetype config
+		// range over the parameters map, getting the name of the policy assignment using the key
+		for policy, params := range lad.Config.Parameters {
+			// for each key, check if we have the same key in the az.Archetypes[lad.id].PolicyAssignments map
+			if _, exists := az.Archetypes[lad.id].PolicyAssignments[policy]; !exists {
+				continue
+			}
+
+			// if we do, cast the value to a map[string]{interface} and range over that map, the key being the parameter name and the value being the parameter value
+			params, ok := params.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("policy assignment %s parameters are not a map", policy)
+			}
+
+			// range over the parameters
+			for pk, pv := range params {
+				// and test if the Policy Assignment.Properties.Parameters map has the same key (the parameter name)
+				if _, exists := az.Archetypes[lad.id].PolicyAssignments[policy].Properties.Parameters[pk]; !exists {
+					continue
+				}
+
+				// if it does, create a new ParameterValuesValue, set the Value field to the value of the parameter in the archetype config
+				// and set the ParameterValuesValue in the Policy Assignment.Properties.Parameters map to the new ParameterValuesValue
+				az.Archetypes[lad.id].PolicyAssignments[policy].Properties.Parameters[pk] = &armpolicy.ParameterValuesValue{Value: pv}
+			}
+		}
 	}
 	return nil
 }
