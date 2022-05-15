@@ -17,8 +17,8 @@ const policyAssignmentPrefix = "policy_assignment_"
 const policyDefinitionPrefix = "policy_definition_"
 const policySetDefinitionPrefix = "policy_set_definition_"
 
-// New returns a new instance of the alzlib library
-func New(dir string) (*AlzLib, error) {
+// NewAlzLib returns a new instance of the alzlib library
+func NewAlzLib(dir string) (*AlzLib, error) {
 
 	if err := checkDirExists(dir); err != nil {
 		return nil, err
@@ -28,8 +28,8 @@ func New(dir string) (*AlzLib, error) {
 		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
 		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
-		Archetypes:              make(map[string]Archetype),
-		libArchetypeDefinitions: make([]libArchetypeDefinition, 0),
+		Archetypes:              make(map[string]*ArchetypeDefinition),
+		libArchetypeDefinitions: make([]*libArchetypeDefinition, 0),
 	}
 
 	// Walk the directory and process files
@@ -119,6 +119,7 @@ func readAndProcessFile(az *AlzLib, path string, processFn processFunc) error {
 }
 
 // generateArchetypes generates the archetype definitions from the supplied data
+// in the libArchetypeDefinitions struct, PolicyDefinitions, PolicySetDefinitions, and PolicyAssignments maps
 func (az *AlzLib) generateArchetypes() error {
 	for _, ad := range az.libArchetypeDefinitions {
 
@@ -127,10 +128,10 @@ func (az *AlzLib) generateArchetypes() error {
 			return fmt.Errorf("duplicate archetype id: %s", ad.id)
 		}
 
-		az.Archetypes[ad.id] = Archetype{
-			PolicyDefinitions:    make(map[string]*armpolicy.Definition),
-			PolicyAssignments:    make(map[string]*armpolicy.Assignment),
-			PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		az.Archetypes[ad.id] = &ArchetypeDefinition{
+			PolicyDefinitions:    make(map[string]armpolicy.Definition),
+			PolicyAssignments:    make(map[string]armpolicy.Assignment),
+			PolicySetDefinitions: make(map[string]armpolicy.SetDefinition),
 		}
 
 		// add the policy set definitions to the Archetype struct
@@ -143,7 +144,7 @@ func (az *AlzLib) generateArchetypes() error {
 			if !ok {
 				return fmt.Errorf("policy set definition %s not found for archetype %s", ps, ad.id)
 			}
-			az.Archetypes[ad.id].PolicySetDefinitions[ps] = p
+			az.Archetypes[ad.id].PolicySetDefinitions[ps] = *p
 		}
 
 		// add the policy definitions to the Archetype struct
@@ -156,7 +157,7 @@ func (az *AlzLib) generateArchetypes() error {
 			if !ok {
 				return fmt.Errorf("policy definition %s not found for archetype %s", pd, ad.id)
 			}
-			az.Archetypes[ad.id].PolicyDefinitions[pd] = p
+			az.Archetypes[ad.id].PolicyDefinitions[pd] = *p
 		}
 
 		// add policy assignments to the Archetype struct
@@ -169,7 +170,7 @@ func (az *AlzLib) generateArchetypes() error {
 			if !ok {
 				return fmt.Errorf("policy assignment %s not found for archetype %s", pa, ad.id)
 			}
-			az.Archetypes[ad.id].PolicyAssignments[pa] = p
+			az.Archetypes[ad.id].PolicyAssignments[pa] = *p
 		}
 
 	}

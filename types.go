@@ -4,26 +4,43 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
+// processFunc is the function signature that is used to process different types of lib file
+type processFunc func(alzlib *AlzLib, data []byte) error
+
+// AlzLib is the structure that gets built from the the library files
+// do not create this directly, use NewAlzLib instead.
 type AlzLib struct {
-	Archetypes           map[string]Archetype
+	Archetypes           map[string]*ArchetypeDefinition
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	// This is not exported and only used on the initial load
-	libArchetypeDefinitions []libArchetypeDefinition
+	libArchetypeDefinitions []*libArchetypeDefinition
 }
 
-type Archetype struct {
-	PolicyDefinitions    map[string]*armpolicy.Definition
-	PolicyAssignments    map[string]*armpolicy.Assignment
-	PolicySetDefinitions map[string]*armpolicy.SetDefinition
+// ArchetypeDefinition represents an archetype definition that hasn't been assigned to a management group
+// maps contain values, rather than pointers, because we don't want to modify the original
+type ArchetypeDefinition struct {
+	PolicyDefinitions    map[string]armpolicy.Definition
+	PolicyAssignments    map[string]armpolicy.Assignment
+	PolicySetDefinitions map[string]armpolicy.SetDefinition
 }
 
+// libArchetypeDefinition represents an archetype definition file,
+// it used to construct the Archetype struct and is then added to the AlzLib struct
 type libArchetypeDefinition struct {
 	id                   string
-	PolicyAssignments    []string `json:"policy_assignments"`
-	PolicyDefinitions    []string `json:"policy_definitions"`
-	PolicySetDefinitions []string `json:"policy_set_definitions"`
+	PolicyAssignments    []string                      `json:"policy_assignments"`
+	PolicyDefinitions    []string                      `json:"policy_definitions"`
+	PolicySetDefinitions []string                      `json:"policy_set_definitions"`
+	Config               *libArchetypeDefinitionConfig `json:"archetype_config"`
 }
 
-type processFunc func(alzlib *AlzLib, data []byte) error
+// libArchetypeConfig is a representation of the archetype_config parameters
+// that are used in the archetype definition files.
+//
+// They override any paremeters defined in the policy assignment files.
+type libArchetypeDefinitionConfig struct {
+	Parameters    map[string]interface{} `json:"parameters"`
+	AccessControl map[string]interface{} `json:"access_control"`
+}
