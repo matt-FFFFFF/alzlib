@@ -20,7 +20,7 @@ func Test_NewAlzLib(t *testing.T) {
 // overridden by the archetype definition
 func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 	aname := "testassignment1"
-	tdname := "testdefinition1"
+	pdname := "testdefinition1"
 	pname := "testparameter1"
 	ptype := armpolicy.ParameterTypeString
 
@@ -29,7 +29,7 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 			{
 				Id:                "testarchetype",
 				PolicyAssignments: []string{aname},
-				PolicyDefinitions: []string{tdname},
+				PolicyDefinitions: []string{pdname},
 				Config: &libArchetypeDefinitionConfig{
 					Parameters: map[string]interface{}{
 						aname: map[string]interface{}{
@@ -40,8 +40,8 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 			},
 		},
 		PolicyDefinitions: map[string]*armpolicy.Definition{
-			tdname: {
-				Name: &tdname,
+			pdname: {
+				Name: &pdname,
 				Properties: &armpolicy.DefinitionProperties{
 					Parameters: map[string]*armpolicy.ParameterDefinitionsValue{
 						pname: {
@@ -69,6 +69,50 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 
 	assert.NilError(t, az.generateArchetypes())
 	assert.Equal(t, az.Archetypes["testarchetype"].PolicyAssignments[aname].Properties.Parameters[pname].Value, "value replaced by archetype config")
+}
+
+func Test_generateArchetypes_archetypeExtension(t *testing.T) {
+	aname := "testassignment1"
+	pdname := "testdefinition1"
+	psname := "testsetdefinition1"
+
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                "testarchetype",
+				PolicyAssignments: []string{},
+				PolicyDefinitions: []string{},
+				Config:            &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicyDefinitions: map[string]*armpolicy.Definition{
+			pdname: {
+				Name: &pdname,
+			},
+		},
+		PolicyAssignments: map[string]*armpolicy.Assignment{
+			aname: {
+				Name:       &aname,
+				Properties: &armpolicy.AssignmentProperties{},
+			},
+		},
+		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
+			psname: {
+				Name: &psname,
+			},
+		},
+		libArchetypeExtensions: []*LibArchetypeDefinition{
+			{
+				Id:                   "testarchetype",
+				PolicyAssignments:    []string{aname},
+				PolicyDefinitions:    []string{pdname},
+				PolicySetDefinitions: []string{psname},
+			},
+		},
+		Archetypes: map[string]*ArchetypeDefinition{},
+	}
+
+	assert.NilError(t, az.generateArchetypes())
 }
 
 func Benchmark_NewAlzLib(b *testing.B) {

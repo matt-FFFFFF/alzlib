@@ -21,16 +21,15 @@ const policySetDefinitionPrefix = "policy_set_definition_"
 
 // NewAlzLib returns a new instance of the alzlib library
 func NewAlzLib(dir string) (*AlzLib, error) {
-
 	if err := checkDirExists(dir); err != nil {
 		return nil, err
 	}
 
 	az := &AlzLib{
+		Archetypes:              make(map[string]*ArchetypeDefinition),
+		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
-		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
-		Archetypes:              make(map[string]*ArchetypeDefinition),
 		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
 	}
 
@@ -222,6 +221,7 @@ func (ad *ArchetypeDefinition) AddLibArchetype(lad *LibArchetypeDefinition) erro
 
 	// Update policy assignment properties with any defined in the archetype config
 	// range over the parameters map, getting the name of the policy assignment using the key
+	// TODO: test if this exists!
 	for policy, params := range lad.Config.Parameters {
 		// for each key, check if we have the same key in the az.Archetypes[lad.id].PolicyAssignments map
 		if _, exists := ad.AlzLib.Archetypes[lad.Id].PolicyAssignments[policy]; !exists {
