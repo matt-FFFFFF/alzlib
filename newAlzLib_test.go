@@ -72,5 +72,8 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 }
 
 func Benchmark_NewAlzLib(b *testing.B) {
-	NewAlzLib("./testdata/lib")
+	_, e := NewAlzLib("./testdata/lib")
+	if e != nil {
+		b.Error(e)
+	}
 }
