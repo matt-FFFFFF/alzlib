@@ -19,6 +19,7 @@ func Test_processArchetypeDefinition_valid(t *testing.T) {
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyAssignments), 8)
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyDefinitions), 104)
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicySetDefinitions), 7)
+	assert.Equal(t, az.libArchetypeDefinitions[0].Config.Parameters["Deploy-MDFC-Config"].(map[string]interface{})["emailSecurityContact"], "test@test.com")
 }
 
 func Test_processPolicyAssignment_valid(t *testing.T) {
@@ -200,7 +201,9 @@ func getSampleArchetypeDefinition() []byte {
 			],
 			"archetype_config": {
 				"parameters": {
-					"emailSecurityContact": "test@test.com"
+					"Deploy-MDFC-Config": {
+						"emailSecurityContact": "test@test.com"
+					}
 				},
 				"access_control": {}
 			}
