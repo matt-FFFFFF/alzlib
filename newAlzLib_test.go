@@ -16,6 +16,8 @@ func Test_NewAlzLib(t *testing.T) {
 	assert.Equal(t, len(az.libArchetypeDefinitions), 12)
 }
 
+// Test_generateArchetypes_policyParameterOverride tests that the resultant policy assignments
+// overridden by the archetype definition
 func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 	aname := "testassignment1"
 	tdname := "testdefinition1"
@@ -24,34 +26,33 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 
 	az := AlzLib{
 		libArchetypeDefinitions: []*libArchetypeDefinition{
-			&libArchetypeDefinition{
+			{
 				id:                "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{tdname},
 				Config: &libArchetypeDefinitionConfig{
 					Parameters: map[string]interface{}{
 						aname: map[string]interface{}{
-							pname: "replaced by archetype config",
+							pname: "value replaced by archetype config",
 						},
 					},
 				},
 			},
 		},
 		PolicyDefinitions: map[string]*armpolicy.Definition{
-			tdname: &armpolicy.Definition{
+			tdname: {
 				Name: &tdname,
 				Properties: &armpolicy.DefinitionProperties{
 					Parameters: map[string]*armpolicy.ParameterDefinitionsValue{
 						pname: {
-							DefaultValue: "default value",
-							Type:         &ptype,
+							Type: &ptype,
 						},
 					},
 				},
 			},
 		},
 		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: &armpolicy.Assignment{
+			aname: {
 				Name: &aname,
 				Properties: &armpolicy.AssignmentProperties{
 					Parameters: map[string]*armpolicy.ParameterValuesValue{
@@ -67,7 +68,7 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 	}
 
 	assert.NilError(t, az.generateArchetypes())
-	assert.Equal(t, az.Archetypes["testarchetype"].PolicyAssignments[aname].Properties.Parameters[pname].Value, "replaced by archetype config")
+	assert.Equal(t, az.Archetypes["testarchetype"].PolicyAssignments[aname].Properties.Parameters[pname].Value, "value replaced by archetype config")
 }
 
 func Benchmark_NewAlzLib(b *testing.B) {
