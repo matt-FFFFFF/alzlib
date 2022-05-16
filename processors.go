@@ -52,8 +52,8 @@ func processPolicyAssignment(az *AlzLib, data []byte) error {
 	if err := json.Unmarshal(data, pa); err != nil {
 		return fmt.Errorf("error unmarshalling policy assignment: %s", err)
 	}
-	if *pa.Name == "" {
-		return fmt.Errorf("policy assignment name is empty")
+	if pa.Name == nil || *pa.Name == "" {
+		return fmt.Errorf("policy assignment name is empty or not present")
 	}
 	az.PolicyAssignments[*pa.Name] = pa
 	return nil
@@ -66,8 +66,8 @@ func processPolicyDefinition(az *AlzLib, data []byte) error {
 	if err := json.Unmarshal(data, pd); err != nil {
 		return fmt.Errorf("error unmarshalling policy definition: %s", err)
 	}
-	if *pd.Name == "" {
-		return fmt.Errorf("policy definition name is empty")
+	if pd.Name == nil || *pd.Name == "" {
+		return fmt.Errorf("policy definition name is empty or not present")
 	}
 	az.PolicyDefinitions[*pd.Name] = pd
 	return nil
@@ -80,8 +80,8 @@ func processPolicySetDefinition(az *AlzLib, data []byte) error {
 	if err := json.Unmarshal(data, psd); err != nil {
 		return fmt.Errorf("error unmarshalling policy set definition: %s", err)
 	}
-	if *psd.Name == "" {
-		return fmt.Errorf("policy set definition name is empty")
+	if psd.Name == nil || *psd.Name == "" {
+		return fmt.Errorf("policy set definition name is empty or not present")
 	}
 	az.PolicySetDefinitions[*psd.Name] = psd
 	return nil
