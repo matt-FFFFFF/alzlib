@@ -14,26 +14,29 @@ type AlzLib struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	PolicyAssignments    map[string]*armpolicy.Assignment
-	// This is not exported and only used on the initial load
-	libArchetypeDefinitions []*libArchetypeDefinition
+	// These are not exported and only used on the initial load
+	libArchetypeDefinitions []*LibArchetypeDefinition
+	libArchetypeExtensions  []*LibArchetypeDefinition
+	libArchetypeExclusions  []*LibArchetypeDefinition
 }
 
 // ArchetypeDefinition represents an archetype definition that hasn't been assigned to a management group
 // maps contain values, rather than pointers, because we don't want to modify the original
 type ArchetypeDefinition struct {
+	AlzLib               *AlzLib
 	PolicyDefinitions    map[string]armpolicy.Definition
 	PolicyAssignments    map[string]armpolicy.Assignment
 	PolicySetDefinitions map[string]armpolicy.SetDefinition
 }
 
-// libArchetypeDefinition represents an archetype definition file,
+// LibArchetypeDefinition represents an archetype definition file,
 // it used to construct the Archetype struct and is then added to the AlzLib struct
-type libArchetypeDefinition struct {
-	id                   string
+type LibArchetypeDefinition struct {
+	Id                   string
+	Config               *libArchetypeDefinitionConfig `json:"archetype_config"`
 	PolicyAssignments    []string                      `json:"policy_assignments"`
 	PolicyDefinitions    []string                      `json:"policy_definitions"`
 	PolicySetDefinitions []string                      `json:"policy_set_definitions"`
-	Config               *libArchetypeDefinitionConfig `json:"archetype_config"`
 }
 
 // libArchetypeConfig is a representation of the archetype_config parameters

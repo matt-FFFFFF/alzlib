@@ -3,10 +3,10 @@ package alzlib
 import (
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"gotest.tools/v3/assert"
 )
 
+// Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
 func Test_NewAlzLib(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
 	assert.NilError(t, err)
@@ -16,61 +16,23 @@ func Test_NewAlzLib(t *testing.T) {
 	assert.Equal(t, len(az.libArchetypeDefinitions), 12)
 }
 
-// Test_generateArchetypes_policyParameterOverride tests that the resultant policy assignments
-// overridden by the archetype definition
-func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
-	aname := "testassignment1"
-	tdname := "testdefinition1"
-	pname := "testparameter1"
-	ptype := armpolicy.ParameterTypeString
-
-	az := AlzLib{
-		libArchetypeDefinitions: []*libArchetypeDefinition{
-			{
-				id:                "testarchetype",
-				PolicyAssignments: []string{aname},
-				PolicyDefinitions: []string{tdname},
-				Config: &libArchetypeDefinitionConfig{
-					Parameters: map[string]interface{}{
-						aname: map[string]interface{}{
-							pname: "value replaced by archetype config",
-						},
-					},
-				},
-			},
-		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
-			tdname: {
-				Name: &tdname,
-				Properties: &armpolicy.DefinitionProperties{
-					Parameters: map[string]*armpolicy.ParameterDefinitionsValue{
-						pname: {
-							Type: &ptype,
-						},
-					},
-				},
-			},
-		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: {
-				Name: &aname,
-				Properties: &armpolicy.AssignmentProperties{
-					Parameters: map[string]*armpolicy.ParameterValuesValue{
-						pname: {
-							Value: "value in assignment",
-						},
-					},
-				},
-			},
-		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
-		Archetypes:           map[string]*ArchetypeDefinition{},
-	}
-
-	assert.NilError(t, az.generateArchetypes())
-	assert.Equal(t, az.Archetypes["testarchetype"].PolicyAssignments[aname].Properties.Parameters[pname].Value, "value replaced by archetype config")
+// Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path
+// that does not exist.
+// The error details are checked for the expected error message.
+func Test_NewAlzLib_noDir(t *testing.T) {
+	_, err := NewAlzLib("./testdata/doesnotexist")
+	assert.ErrorContains(t, err, "the supplied lib directory does not exist")
 }
 
+// Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
+// path that is not a directory.
+// The error details are checked for the expected error message.
+func Test_NewAlzLib_notADir(t *testing.T) {
+	_, err := NewAlzLib("./testdata/notadirectory")
+	assert.ErrorContains(t, err, "is not a directory and it should be")
+}
+
+// Benchmark_NewAlzLib benchmarks the creation of a new AlzLib based on the test data set
 func Benchmark_NewAlzLib(b *testing.B) {
 	_, e := NewAlzLib("./testdata/lib")
 	if e != nil {
