@@ -58,7 +58,7 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 func checkDirExists(dir string) error {
 	fs, err := os.Stat(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("the supplied lib directory does not exist: %s. %s", dir, err)
 	}
 	// The error is nil, so let's check if it's actually a directory
 	if !fs.IsDir() {

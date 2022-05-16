@@ -21,7 +21,7 @@ func Test_NewAlzLib(t *testing.T) {
 // The error details are checked for the expected error message.
 func Test_NewAlzLib_noDir(t *testing.T) {
 	_, err := NewAlzLib("./testdata/doesnotexist")
-	assert.ErrorContains(t, err, "no such file or directory")
+	assert.ErrorContains(t, err, "the supplied lib directory does not exist")
 }
 
 // Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
