@@ -1,5 +1,7 @@
 # alzlib - a go module for reading Azure Landing Zones Terraform module lib definitions
 
+[![Go test](https://github.com/matt-FFFFFF/alzlib/actions/workflows/go-test.yml/badge.svg)](https://github.com/matt-FFFFFF/alzlib/actions/workflows/go-test.yml)
+
 This module provides a go library for reading [Azure Landing Zones](https://github.com/Azure/terraform-azurerm-caf-enterprise-scale) Terraform module lib definitions.
 
 It uses the Azure SDK for Go to get the data types required:
