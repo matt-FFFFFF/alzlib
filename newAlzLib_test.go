@@ -6,8 +6,8 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
-func Test_NewAlzLib(t *testing.T) {
+// TestNewAlzLib tests the valid creation of a new AlzLib from a valid source directory
+func TestNewAlzLib(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
 	assert.NilError(t, err)
 	assert.Equal(t, len(az.PolicyAssignments), 35)
@@ -16,24 +16,24 @@ func Test_NewAlzLib(t *testing.T) {
 	assert.Equal(t, len(az.libArchetypeDefinitions), 12)
 }
 
-// Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path
+// TestNewAlzLibNoDir tests the creation of a new AlzLib when supplied with a path
 // that does not exist.
 // The error details are checked for the expected error message.
-func Test_NewAlzLib_noDir(t *testing.T) {
+func TestNewAlzLibNoDir(t *testing.T) {
 	_, err := NewAlzLib("./testdata/doesnotexist")
 	assert.ErrorContains(t, err, "the supplied lib directory does not exist")
 }
 
-// Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
+// TestNewAlzLibNotADir tests the creation of a new AlzLib when supplied with a valid
 // path that is not a directory.
 // The error details are checked for the expected error message.
-func Test_NewAlzLib_notADir(t *testing.T) {
+func TestNewAlzLibNotADir(t *testing.T) {
 	_, err := NewAlzLib("./testdata/notadirectory")
 	assert.ErrorContains(t, err, "is not a directory and it should be")
 }
 
-// Benchmark_NewAlzLib benchmarks the creation of a new AlzLib based on the test data set
-func Benchmark_NewAlzLib(b *testing.B) {
+// BenchmarkNewAlzLib benchmarks the creation of a new AlzLib based on the test data set
+func BenchmarkNewAlzLib(b *testing.B) {
 	_, e := NewAlzLib("./testdata/lib")
 	if e != nil {
 		b.Error(e)
