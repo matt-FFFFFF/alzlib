@@ -15,8 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/pipeline"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/shared"
 	azpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -49,7 +50,7 @@ func setDefaults(r *armpolicy.RegistrationOptions) {
 // NewRPRegistrationPolicy creates a policy object configured using the specified options.
 // The policy controls whether an unregistered resource provider should automatically be
 // registered. See https://aka.ms/rps-not-found for more information.
-func NewRPRegistrationPolicy(cred shared.TokenCredential, o *armpolicy.RegistrationOptions) (azpolicy.Policy, error) {
+func NewRPRegistrationPolicy(cred azcore.TokenCredential, o *armpolicy.RegistrationOptions) (azpolicy.Policy, error) {
 	if o == nil {
 		o = &armpolicy.RegistrationOptions{}
 	}
@@ -60,7 +61,7 @@ func NewRPRegistrationPolicy(cred shared.TokenCredential, o *armpolicy.Registrat
 	authPolicy := NewBearerTokenPolicy(cred, &armpolicy.BearerTokenOptions{Scopes: []string{conf.Audience + "/.default"}})
 	p := &rpRegistrationPolicy{
 		endpoint: conf.Endpoint,
-		pipeline: runtime.NewPipeline(shared.Module, shared.Version, runtime.PipelineOptions{PerRetry: []pipeline.Policy{authPolicy}}, &o.ClientOptions),
+		pipeline: runtime.NewPipeline(shared.Module, shared.Version, runtime.PipelineOptions{PerRetry: []azpolicy.Policy{authPolicy}}, &o.ClientOptions),
 		options:  *o,
 	}
 	// init the copy
@@ -70,7 +71,7 @@ func NewRPRegistrationPolicy(cred shared.TokenCredential, o *armpolicy.Registrat
 
 type rpRegistrationPolicy struct {
 	endpoint string
-	pipeline pipeline.Pipeline
+	pipeline runtime.Pipeline
 	options  armpolicy.RegistrationOptions
 }
 
@@ -207,24 +208,24 @@ type serviceErrorDetails struct {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 type providersOperations struct {
-	p     pipeline.Pipeline
+	p     runtime.Pipeline
 	u     string
 	subID string
 }
 
 // Get - Gets the specified resource provider.
-func (client *providersOperations) Get(ctx context.Context, resourceProviderNamespace string) (*ProviderResponse, error) {
+func (client *providersOperations) Get(ctx context.Context, resourceProviderNamespace string) (providerResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceProviderNamespace)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	resp, err := client.p.Do(req)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	result, err := client.getHandleResponse(resp)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	return result, nil
 }
@@ -245,31 +246,31 @@ func (client *providersOperations) getCreateRequest(ctx context.Context, resourc
 }
 
 // getHandleResponse handles the Get response.
-func (client *providersOperations) getHandleResponse(resp *http.Response) (*ProviderResponse, error) {
+func (client *providersOperations) getHandleResponse(resp *http.Response) (providerResponse, error) {
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return nil, shared.NewResponseError(resp)
+		return providerResponse{}, exported.NewResponseError(resp)
 	}
-	result := ProviderResponse{RawResponse: resp}
+	result := providerResponse{RawResponse: resp}
 	err := runtime.UnmarshalAsJSON(resp, &result.Provider)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
-	return &result, err
+	return result, err
 }
 
 // Register - Registers a subscription with a resource provider.
-func (client *providersOperations) Register(ctx context.Context, resourceProviderNamespace string) (*ProviderResponse, error) {
+func (client *providersOperations) Register(ctx context.Context, resourceProviderNamespace string) (providerResponse, error) {
 	req, err := client.registerCreateRequest(ctx, resourceProviderNamespace)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	resp, err := client.p.Do(req)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	result, err := client.registerHandleResponse(resp)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
 	return result, nil
 }
@@ -290,29 +291,29 @@ func (client *providersOperations) registerCreateRequest(ctx context.Context, re
 }
 
 // registerHandleResponse handles the Register response.
-func (client *providersOperations) registerHandleResponse(resp *http.Response) (*ProviderResponse, error) {
+func (client *providersOperations) registerHandleResponse(resp *http.Response) (providerResponse, error) {
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return nil, shared.NewResponseError(resp)
+		return providerResponse{}, exported.NewResponseError(resp)
 	}
-	result := ProviderResponse{RawResponse: resp}
+	result := providerResponse{RawResponse: resp}
 	err := runtime.UnmarshalAsJSON(resp, &result.Provider)
 	if err != nil {
-		return nil, err
+		return providerResponse{}, err
 	}
-	return &result, err
+	return result, err
 }
 
 // ProviderResponse is the response envelope for operations that return a Provider type.
-type ProviderResponse struct {
+type providerResponse struct {
 	// Resource provider information.
-	Provider *Provider
+	Provider *provider
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
 // Provider - Resource provider information.
-type Provider struct {
+type provider struct {
 	// The provider ID.
 	ID *string `json:"id,omitempty"`
 
