@@ -19,10 +19,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/setup-go@v3
+      name: setup go
       with:
         go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@v3
-    - run: go test ./...
+      name: checkout
+      
+    - run: go test -v -race
+      if: matrix.os != 'ubuntu-latest'
+      name: go test (non-Linux)
+      
+    - run: go test -v -race -coverprofile=coverage.txt -covermode=atomic
+      if: matrix.os == 'ubuntu-latest'
+      name: go test (Linux)
+      
+    - run: bash <(curl -s https://codecov.io/bash)
+      name: report test code coverage
+      if: matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/master'
+    
 
   # test-cache:
   #   runs-on: ubuntu-latest
