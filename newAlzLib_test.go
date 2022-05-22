@@ -39,3 +39,9 @@ func Benchmark_NewAlzLib(b *testing.B) {
 		b.Error(e)
 	}
 }
+
+// Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
+func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
+	_, err := NewAlzLib("./testdata/badlib-duplicatearchetypedef")
+	assert.ErrorContains(t, err, "duplicate archetype id: duplicate")
+}
