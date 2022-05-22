@@ -28,13 +28,15 @@ jobs:
       if: matrix.os != 'ubuntu-latest'
       name: go test (non-Linux)
 
-    - run: go test -v -race -coverprofile=coverage.txt -covermode=atomic
+    - run: go test -v -race -coverprofile=coverage.out -covermode=atomic
       if: matrix.os == 'ubuntu-latest'
       name: go test (Linux)
 
-    - run: bash <(curl -s https://codecov.io/bash)
-      name: report test code coverage
+    - uses: codecov/codecov-action@v2
       if: matrix.os == 'ubuntu-latest'
+      with:
+        files: ./coverage1.out
+        verbose: true # optional (default = false)
 
 
   # test-cache:
