@@ -53,7 +53,7 @@ func newArchetypeDefinition(az *AlzLib) *ArchetypeDefinition {
 	}
 }
 
-// AddLibArchetype method add the supplied lib archetype definition to the archetype definition.
+// AddLibArchetype method adds the supplied lib archetype definition to the archetype definition.
 // This is used at the initial processing of the lib directory as well as for archetype extensions.
 func (ad *ArchetypeDefinition) AddLibArchetype(lad *LibArchetypeDefinition) error {
 	// add the policy set definitions to the Archetype struct
@@ -129,8 +129,8 @@ func (ad *ArchetypeDefinition) AddLibArchetype(lad *LibArchetypeDefinition) erro
 	return nil
 }
 
-// AddLibArchetype method add the supplied lib archetype definition to the archetype definition.
-// This is used at the initial processing of the lib directory as well as for archetype extensions.
+// RemoveLibArchetype method removed the supplied lib archetype definition from the archetype definition.
+// This is used or archetype exclusions.
 func (ad *ArchetypeDefinition) RemoveLibArchetype(lad *LibArchetypeDefinition) error {
 	// remove the policy set definitions to the Archetype struct
 	// range over the strings in in the libArchetypeDefinition array
