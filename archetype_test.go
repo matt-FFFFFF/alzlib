@@ -451,3 +451,32 @@ func TestGenerateArchetypesNotFoundAssignment(t *testing.T) {
 
 	assert.ErrorContains(t, az.generateArchetypes(), "policy assignment testassignment1 not found for archetype testarchetype")
 }
+
+// TestGenerateArchetypesDuplicateArchetype tests the scenario where there is a duplicate archetype definition
+// in the archetype_definition files.
+func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
+	archetype := "testarchetype"
+
+	// The rather unwieldy literals that we use for the testing are:
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{},
+				PolicyDefinitions:    []string{},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{},
+				PolicyDefinitions:    []string{},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		Archetypes: map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "duplicate archetype id: testarchetype")
+}
