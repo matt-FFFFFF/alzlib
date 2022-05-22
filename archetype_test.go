@@ -9,7 +9,7 @@ import (
 
 // Test_generateArchetypes_policyParameterOverride tests that the resultant policy assignments
 // overridden by the archetype definition
-func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
+func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 	aname := "testassignment1"
 	pdname := "testdefinition1"
 	pname := "testparameter1"
@@ -64,7 +64,7 @@ func Test_generateArchetypes_policyParameterOverride(t *testing.T) {
 
 // Test_generateArchetypes_policyParameterOverride_invalidParameterName tests that the correct
 // error is returned when an invalid parameter name is used in the archetype_config parameters section.
-func Test_generateArchetypes_policyParameterOverride_invalidParameterName(t *testing.T) {
+func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testing.T) {
 	aname := "testassignment1"
 	pdname := "testdefinition1"
 	pname := "testparameter1"
@@ -119,7 +119,7 @@ func Test_generateArchetypes_policyParameterOverride_invalidParameterName(t *tes
 
 // Test_generateArchetypes_policyParameterOverride_invalidAssignmentName tests that the correct
 // error is returned when an invalid parameter name is used in the archetype_config parameters section.
-func Test_generateArchetypes_policyParameterOverride_invalidAssignmentName(t *testing.T) {
+func TestGenerateArchetypesPolicyParameterOverrideInvalidAssignmentName(t *testing.T) {
 	aname := "testassignment1"
 	aname2 := "testassignment2"
 	pdname := "testdefinition1"
@@ -175,7 +175,7 @@ func Test_generateArchetypes_policyParameterOverride_invalidAssignmentName(t *te
 // Test_generateArchetypes_archetypeExtension tests the archetype extension process.
 // It starts with an empty archetype that is extended by adding a policy assignment,
 // policy definition, and policy set definition.
-func Test_generateArchetypes_archetypeExtension(t *testing.T) {
+func TestGenerateArchetypesArchetypeExtension(t *testing.T) {
 	archetype := "testarchetype"
 	aname := "testassignment1"
 	pdname := "testdefinition1"
@@ -236,7 +236,7 @@ func Test_generateArchetypes_archetypeExtension(t *testing.T) {
 // and policy set definition.
 // This is excluded by removing the policy assignment policy definition, and policy set definition.
 // The resulting archetype should have no policy assignments, no policy definitions, and no policy set definitions.
-func Test_generateArchetypes_archetypeExclusion(t *testing.T) {
+func TestGenerateArchetypesArchetypeExclusion(t *testing.T) {
 	archetype := "testarchetype"
 	aname := "testassignment1"
 	pdname := "testdefinition1"
@@ -290,20 +290,13 @@ func Test_generateArchetypes_archetypeExclusion(t *testing.T) {
 	assert.Equal(t, len(az.Archetypes[archetype].PolicySetDefinitions), 0)
 }
 
-func Test_generateArchetypes_duplicateDefinitions(t *testing.T) {
+// TestGenerateArchetypesDuplicateSetDefinitions tests the scenario that there are duplicate policy
+// set definitions in the archetype_definition file.
+func TestGenerateArchetypesDuplicateSetDefinitions(t *testing.T) {
 	archetype := "testarchetype"
-	aname := "testassignment1"
-	pdname := "testdefinition1"
 	psname := "testsetdefinition1"
 
 	// The rather unwieldy literals that we use for the testing are:
-	pa := &armpolicy.Assignment{
-		Name:       &aname,
-		Properties: &armpolicy.AssignmentProperties{},
-	}
-	pd := &armpolicy.Definition{
-		Name: &pdname,
-	}
 	psd := &armpolicy.SetDefinition{
 		Name: &psname,
 	}
@@ -312,17 +305,9 @@ func Test_generateArchetypes_duplicateDefinitions(t *testing.T) {
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
 				Id:                   archetype,
-				PolicyAssignments:    []string{aname, aname},
-				PolicyDefinitions:    []string{pdname, pdname},
 				PolicySetDefinitions: []string{psname, psname},
 				Config:               &libArchetypeDefinitionConfig{},
 			},
-		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
-			pdname: pd,
-		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: pa,
 		},
 		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
 			psname: psd,
@@ -331,4 +316,138 @@ func Test_generateArchetypes_duplicateDefinitions(t *testing.T) {
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy set definition in archetype testarchetype")
+}
+
+// TestGenerateArchetypesNotFoundSetDefinitions tests the scenario where a policy set definition is specified in
+// an archetype_definition file, but is not found in the policy set definitions.
+func TestGenerateArchetypesNotFoundSetDefinitions(t *testing.T) {
+	archetype := "testarchetype"
+	psname := "testsetdefinition1"
+
+	// The rather unwieldy literals that we use for the testing are:
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{},
+				PolicyDefinitions:    []string{},
+				PolicySetDefinitions: []string{psname, psname},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
+		Archetypes:           map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "policy set definition testsetdefinition1 not found for archetype testarchetype")
+}
+
+// TestGenerateArchetypesDuplicateDefinitions tests the scenario that there are duplicate policy
+// definitions in the archetype_definition file.
+func TestGenerateArchetypesDuplicateDefinitions(t *testing.T) {
+	archetype := "testarchetype"
+	pdname := "testdefinition1"
+
+	// The rather unwieldy literals that we use for the testing are:
+	pd := &armpolicy.Definition{
+		Name: &pdname,
+	}
+
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{},
+				PolicyDefinitions:    []string{pdname, pdname},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicyDefinitions: map[string]*armpolicy.Definition{
+			pdname: pd,
+		},
+		Archetypes: map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy definition in archetype testarchetype")
+}
+
+// TestGenerateArchetypesNotFoundSetDefinitions tests the scenario where a policy definition is specified in
+// an archetype_definition file, but is not found in the policy definitions.
+func TestGenerateArchetypesNotFoundDefinitions(t *testing.T) {
+	archetype := "testarchetype"
+	pdname := "testdefinition1"
+
+	// The rather unwieldy literals that we use for the testing are:
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{},
+				PolicyDefinitions:    []string{pdname},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicyDefinitions: map[string]*armpolicy.Definition{},
+		Archetypes:        map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "policy definition testdefinition1 not found for archetype testarchetype")
+}
+
+// TestGenerateArchetypesDuplicateAssignment tests the scenario that there are duplicate policy
+// assignments in the archetype_definition file.
+func TestGenerateArchetypesDuplicateAssignment(t *testing.T) {
+	archetype := "testarchetype"
+	aname := "testassignment1"
+
+	// The rather unwieldy literals that we use for the testing are:
+	pa := &armpolicy.Assignment{
+		Name:       &aname,
+		Properties: &armpolicy.AssignmentProperties{},
+	}
+
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{aname, aname},
+				PolicyDefinitions:    []string{},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicyAssignments: map[string]*armpolicy.Assignment{
+			aname: pa,
+		},
+		Archetypes: map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy assignment in archetype testarchetype")
+}
+
+// TestGenerateArchetypesNotFoundAssignment tests the scenario where a policy assignment is specified in
+// an archetype_definition file, but is not found in the assignments.
+func TestGenerateArchetypesNotFoundAssignment(t *testing.T) {
+	archetype := "testarchetype"
+	aname := "testassignment1"
+
+	// The rather unwieldy literals that we use for the testing are:
+
+	az := AlzLib{
+		libArchetypeDefinitions: []*LibArchetypeDefinition{
+			{
+				Id:                   archetype,
+				PolicyAssignments:    []string{aname},
+				PolicyDefinitions:    []string{},
+				PolicySetDefinitions: []string{},
+				Config:               &libArchetypeDefinitionConfig{},
+			},
+		},
+		PolicyAssignments: map[string]*armpolicy.Assignment{},
+		Archetypes:        map[string]*ArchetypeDefinition{},
+	}
+
+	assert.ErrorContains(t, az.generateArchetypes(), "policy assignment testassignment1 not found for archetype testarchetype")
 }
