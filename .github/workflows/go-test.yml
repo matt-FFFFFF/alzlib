@@ -35,7 +35,7 @@ jobs:
     - uses: codecov/codecov-action@v2
       if: matrix.os == 'ubuntu-latest'
       with:
-        files: ./coverage1.out
+        files: ./coverage.out
         verbose: true # optional (default = false)
 
 
