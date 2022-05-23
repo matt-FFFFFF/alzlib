@@ -32,7 +32,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       name: go test (Linux)
 
-    - uses: codecov/codecov-action@v2
+    - uses: codecov/codecov-action@v3
       if: matrix.os == 'ubuntu-latest'
       with:
         files: ./coverage.out
