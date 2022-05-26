@@ -22,3 +22,4 @@ go.work
 
 # Test coverage file
 coverage.out
+coverage.html

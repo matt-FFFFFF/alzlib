@@ -32,8 +32,8 @@ func processArchetypeExtension(az *AlzLib, data []byte) error {
 	return nil
 }
 
-// processArchetypeExtension is a processFunc that reads the archetype_exclusion
-// bytes, processes, then adds the created LibArchetypeDefinition to the AlzLib
+// processArchetypeExclusion is a processFunc that reads the archetype_exclusion
+// bytes, processes, then removed the created LibArchetypeDefinition from the AlzLib
 func processArchetypeExclusion(az *AlzLib, data []byte) error {
 	excl, err := getLibArchetypeDefinition(data)
 	if err != nil {
@@ -103,7 +103,7 @@ func getLibArchetypeDefinition(data []byte) (*LibArchetypeDefinition, error) {
 	id := ""
 
 	if err := json.Unmarshal(data, &parent); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marshalling LibArchetypeDefinition JSON object: %s", err)
 	}
 
 	// check we only have 1 top level object
@@ -116,7 +116,7 @@ func getLibArchetypeDefinition(data []byte) (*LibArchetypeDefinition, error) {
 		id = k
 		c, err := json.Marshal(parent[k].(map[string]interface{}))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error marshalling child JSON object for %s: %s", k, err)
 		}
 		child = c
 	}
