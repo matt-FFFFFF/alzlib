@@ -12,12 +12,15 @@ import (
 )
 
 // These are the file prefixes for the resource types
-const archetypeDefinitionPrefix = "archetype_definition_"
-const archetypeExclusionPrefix = "archetype_exclusion_"
-const archetypeExtensionPrefix = "archetype_extension_"
-const policyAssignmentPrefix = "policy_assignment_"
-const policyDefinitionPrefix = "policy_definition_"
-const policySetDefinitionPrefix = "policy_set_definition_"
+const (
+	archetypeDefinitionPrefix = "archetype_definition_"
+	archetypeExclusionPrefix  = "archetype_exclusion_"
+	archetypeExtensionPrefix  = "archetype_extension_"
+	policyAssignmentPrefix    = "policy_assignment_"
+	policyDefinitionPrefix    = "policy_definition_"
+	policySetDefinitionPrefix = "policy_set_definition_"
+	managementGroupPrefix     = "management_group_"
+)
 
 // NewAlzLib returns a new instance of the alzlib library using the supplied directory
 func NewAlzLib(dir string) (*AlzLib, error) {
@@ -30,6 +33,8 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
+		RootManagementGroup:     nil,
+		libManagementGroups:     make(map[string]*LibManagementGroup),
 		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
 	}
 
@@ -49,6 +54,10 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 
 	if err := az.generateArchetypes(); err != nil {
 		return nil, fmt.Errorf("error generating archetypes: %s", err)
+	}
+
+	if err := az.generateManagementGroups(); err != nil {
+		return nil, fmt.Errorf("error generating management groups: %s", err)
 	}
 
 	return az, nil
@@ -96,6 +105,10 @@ func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	// if the file is an archetype extension
 	case strings.HasPrefix(n, archetypeExtensionPrefix):
 		err = readAndProcessFile(az, path, processArchetypeExtension)
+
+	// if the file is a management group
+	case strings.HasPrefix(n, managementGroupPrefix):
+		err = readAndProcessFile(az, path, processManagementGroup)
 	}
 
 	// If there's an error, wrap it with the file path

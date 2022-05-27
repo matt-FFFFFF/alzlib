@@ -495,7 +495,7 @@ func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 		Root_scope_resource_id:    "rootid",
 	}
 
-	ad, err := az.Archetypes["es_root"].ProjectArchetypeAtManagementGroup(td)
+	ad, err := az.Archetypes["es_root"].ProjectArchetypeAtManagementGroup(&td)
 	assert.NilError(t, err)
 	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Location, "location")
 	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Scope, "managementgroupid")
@@ -522,7 +522,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplate(t *testing.T) {
 		},
 	}
 
-	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	_, err := ad.ProjectArchetypeAtManagementGroup(&td)
 	assert.ErrorContains(t, err, "error parsing template")
 }
 
@@ -541,7 +541,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplateData(t *testing.T) {
 		},
 	}
 
-	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	_, err := ad.ProjectArchetypeAtManagementGroup(&td)
 	assert.ErrorContains(t, err, "error executing template policy assignment")
 }
 
@@ -561,6 +561,6 @@ func TestProjectArchetypeAtManagementGroupBadTemplateJsonError(t *testing.T) {
 		},
 	}
 
-	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	_, err := ad.ProjectArchetypeAtManagementGroup(&td)
 	assert.ErrorContains(t, err, "error creating new policy assignment")
 }
