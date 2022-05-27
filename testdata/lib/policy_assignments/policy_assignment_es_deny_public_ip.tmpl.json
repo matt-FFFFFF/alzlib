@@ -7,11 +7,11 @@
     "displayName": "Deny the creation of public IP",
     "notScopes": [],
     "parameters": {},
-    "policyDefinitionId": "${root_scope_resource_id}/providers/Microsoft.Authorization/policyDefinitions/Deny-PublicIP",
-    "scope": "${current_scope_resource_id}",
+    "policyDefinitionId": "{{.Root_scope_resource_id}}/providers/Microsoft.Authorization/policyDefinitions/Deny-PublicIP",
+    "scope": "{{.Current_scope_resource_id}}",
     "enforcementMode": "Default"
   },
-  "location": "${default_location}",
+  "location": "{{.Default_location}}",
   "identity": {
     "type": "None"
   }

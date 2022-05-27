@@ -1,7 +1,10 @@
 package alzlib
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"text/template"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
@@ -162,4 +165,43 @@ func (ad *ArchetypeDefinition) RemoveLibArchetype(lad *LibArchetypeDefinition) e
 		delete(ad.AlzLib.Archetypes[lad.Id].PolicyAssignments, pa)
 	}
 	return nil
+}
+
+// ProjectArchetypeAtManagementGroup takes an existing archetype definition and uses templating to
+// replace tokens in the file with real values.
+func (ad *ArchetypeDefinition) ProjectArchetypeAtManagementGroup(t TemplateData) (*ArchetypeDefinition, error) {
+	newad := ArchetypeDefinition{
+		PolicyDefinitions:    make(map[string]armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]armpolicy.SetDefinition),
+		PolicyAssignments:    make(map[string]armpolicy.Assignment),
+	}
+
+	for pak, pav := range ad.PolicyAssignments {
+		pavjson, err := json.Marshal(pav)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling policy assignment %s for archetype projection: %s", pak, err)
+		}
+		tmpl, err := template.New("policy assignment").Parse(string(pavjson))
+		if err != nil {
+			return nil, fmt.Errorf("error parsing template policy assignment %s for archetype projection: %s", pak, err)
+		}
+
+		var buf bytes.Buffer
+		err = tmpl.Execute(&buf, t)
+		if err != nil {
+			return nil, fmt.Errorf("error executing template policy assignment %s for archetype projection: %s", pak, err)
+		}
+
+		newpa := armpolicy.Assignment{}
+		err = json.Unmarshal(buf.Bytes(), &newpa)
+		if err != nil {
+			return nil, fmt.Errorf("error creating new policy assignment %s after template execution for archetype projection: %s", pak, err)
+		}
+		newad.PolicyAssignments[pak] = newpa
+	}
+
+	newad.PolicyDefinitions = ad.PolicyDefinitions
+	newad.PolicySetDefinitions = ad.PolicySetDefinitions
+
+	return &newad, nil
 }
