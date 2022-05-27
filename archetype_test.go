@@ -526,7 +526,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplate(t *testing.T) {
 	assert.ErrorContains(t, err, "error parsing template")
 }
 
-// TestProjectArchetypeAtManagementGroupBadTemplateData tests policy assignment with a bad tempalting syntax.
+// TestProjectArchetypeAtManagementGroupBadTemplateData tests policy assignment with an unknown field in template data.
 func TestProjectArchetypeAtManagementGroupBadTemplateData(t *testing.T) {
 	paname := "testpaname {{.BadData}}"
 	td := TemplateData{
@@ -543,4 +543,24 @@ func TestProjectArchetypeAtManagementGroupBadTemplateData(t *testing.T) {
 
 	_, err := ad.ProjectArchetypeAtManagementGroup(td)
 	assert.ErrorContains(t, err, "error executing template policy assignment")
+}
+
+// TestProjectArchetypeAtManagementGroupBadTemplateJsonError tests the condition where
+// the template makes the resultant JSON invalid.
+func TestProjectArchetypeAtManagementGroupBadTemplateJsonError(t *testing.T) {
+	paname := "testpaname {{.Root_scope_id}}"
+	td := TemplateData{
+		Root_scope_id: `"`,
+	}
+
+	ad := ArchetypeDefinition{
+		PolicyAssignments: map[string]armpolicy.Assignment{
+			"badtemplate": {
+				Name: &paname,
+			},
+		},
+	}
+
+	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	assert.ErrorContains(t, err, "error creating new policy assignment")
 }
