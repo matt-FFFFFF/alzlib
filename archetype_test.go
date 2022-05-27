@@ -480,3 +480,23 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate archetype id: testarchetype")
 }
+
+func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
+	az, err := NewAlzLib("./testdata/lib")
+	assert.NilError(t, err)
+
+	td := TemplateData{
+		Current_scope_resource_id: "managementgroupid",
+		Default_location:          "location",
+		Root_scope_id:             "root",
+		Root_scope_resource_id:    "rootid",
+	}
+
+	ad, err := az.Archetypes["es_root"].ProjectArchetypeAtManagementGroup(td)
+	assert.NilError(t, err)
+	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Location, "location")
+	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Scope, "managementgroupid")
+	assert.Equal(t, ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/root-mgmt/providers/Microsoft.OperationalInsights/workspaces/root-la")
+	assert.Equal(t, len(ad.PolicyDefinitions), 104)
+	assert.Equal(t, len(ad.PolicySetDefinitions), 7)
+}

@@ -42,8 +42,15 @@ type LibArchetypeDefinition struct {
 // libArchetypeConfig is a representation of the archetype_config parameters
 // that are used in the archetype definition files.
 // .
-// They override any paremeters defined in the policy assignment files.
+// They override any parameters defined in the policy assignment files.
 type libArchetypeDefinitionConfig struct {
 	Parameters    map[string]interface{} `json:"parameters"`
 	AccessControl map[string]interface{} `json:"access_control"`
+}
+
+type TemplateData struct {
+	Current_scope_resource_id string
+	Default_location          string
+	Root_scope_id             string
+	Root_scope_resource_id    string
 }
