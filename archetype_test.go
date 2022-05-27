@@ -481,6 +481,9 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate archetype id: testarchetype")
 }
 
+// TestProjectArchetypeAtManagementGroupValid tests a valid management group archetype projection
+// it uses the testdata directory, which must have been converted to the Go tempalting language
+// using the make converttestdata command.
 func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
 	assert.NilError(t, err)
@@ -499,4 +502,45 @@ func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 	assert.Equal(t, ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/root-mgmt/providers/Microsoft.OperationalInsights/workspaces/root-la")
 	assert.Equal(t, len(ad.PolicyDefinitions), 104)
 	assert.Equal(t, len(ad.PolicySetDefinitions), 7)
+}
+
+// TestProjectArchetypeAtManagementGroupBadTemplate tests policy assignment with a bad tempalting syntax.
+func TestProjectArchetypeAtManagementGroupBadTemplate(t *testing.T) {
+	paname := "testpaname {{."
+	td := TemplateData{
+		Current_scope_resource_id: "managementgroupid",
+		Default_location:          "location",
+		Root_scope_id:             "root",
+		Root_scope_resource_id:    "rootid",
+	}
+
+	ad := ArchetypeDefinition{
+		PolicyAssignments: map[string]armpolicy.Assignment{
+			"badtemplate": {
+				Name: &paname,
+			},
+		},
+	}
+
+	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	assert.ErrorContains(t, err, "error parsing template")
+}
+
+// TestProjectArchetypeAtManagementGroupBadTemplateData tests policy assignment with a bad tempalting syntax.
+func TestProjectArchetypeAtManagementGroupBadTemplateData(t *testing.T) {
+	paname := "testpaname {{.BadData}}"
+	td := TemplateData{
+		Root_scope_id: "root",
+	}
+
+	ad := ArchetypeDefinition{
+		PolicyAssignments: map[string]armpolicy.Assignment{
+			"badtemplate": {
+				Name: &paname,
+			},
+		},
+	}
+
+	_, err := ad.ProjectArchetypeAtManagementGroup(td)
+	assert.ErrorContains(t, err, "error executing template policy assignment")
 }
