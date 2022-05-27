@@ -18,10 +18,16 @@ func (az *AlzLib) generateManagementGroups() error {
 			az.RootScopeId = mg.Name
 			rmg, err := convertManagementGroupsToHierarchy(mg.Name, az, nil)
 			if err != nil {
-				return fmt.Errorf("error converting management group %s to hierarchy: %s", mg.Name, err)
+				return fmt.Errorf("error converting root management group %s: %s", mg.Name, err)
 			}
 			az.RootManagementGroup = rmg
 		}
+		if mg.IsRoot && az.RootManagementGroup != nil && mg.Name != az.RootManagementGroup.Name {
+			return fmt.Errorf("duplicate root management group name: %s & %s", mg.Name, az.RootManagementGroup.Name)
+		}
+	}
+	if az.RootManagementGroup == nil {
+		return fmt.Errorf("no root management group found")
 	}
 	return nil
 }
