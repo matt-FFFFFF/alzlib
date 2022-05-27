@@ -23,7 +23,7 @@
             }
         ],
         "assignableScopes": [
-            "${current_scope_resource_id}"
+            "{{.Current_scope_resource_id}}"
         ]
     }
 }
