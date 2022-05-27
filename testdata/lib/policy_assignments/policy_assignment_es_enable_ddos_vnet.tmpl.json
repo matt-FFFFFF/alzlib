@@ -8,17 +8,17 @@
     "notScopes": [],
     "parameters": {
       "ddosPlan": {
-        "value": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/${root_scope_id}-mgmt/providers/Microsoft.Network/ddosProtectionPlans/${root_scope_id}-ddos"
+        "value": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/{{.Root_scope_id}}-mgmt/providers/Microsoft.Network/ddosProtectionPlans/{{.Root_scope_id}}-ddos"
       },
       "effect": {
         "value": "Modify"
       }
     },
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/94de2ad3-e0c1-4caf-ad78-5d47bbc83d3d",
-    "scope": "${current_scope_resource_id}",
+    "scope": "{{.Current_scope_resource_id}}",
     "enforcementMode": null
   },
-  "location": "${default_location}",
+  "location": "{{.Default_location}}",
   "identity": {
     "type": "SystemAssigned"
   }

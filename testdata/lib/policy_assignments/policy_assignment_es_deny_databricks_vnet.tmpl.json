@@ -11,11 +11,11 @@
         "value": "Deny"
       }
     },
-    "policyDefinitionId": "${root_scope_resource_id}/providers/Microsoft.Authorization/policyDefinitions/Deny-Databricks-VirtualNetwork",
-    "scope": "${current_scope_resource_id}",
+    "policyDefinitionId": "{{.Root_scope_resource_id}}/providers/Microsoft.Authorization/policyDefinitions/Deny-Databricks-VirtualNetwork",
+    "scope": "{{.Current_scope_resource_id}}",
     "enforcementMode": "Default"
   },
-  "location": "${default_location}",
+  "location": "{{.Default_location}}",
   "identity": {
     "type": "None"
   }

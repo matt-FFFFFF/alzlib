@@ -7,11 +7,11 @@
     "displayName": "Deny or Deploy and append TLS requirements and SSL enforcement on resources without Encryption in transit",
     "notScopes": [],
     "parameters": {},
-    "policyDefinitionId": "${root_scope_resource_id}/providers/Microsoft.Authorization/policySetDefinitions/Enforce-EncryptTransit",
-    "scope": "${current_scope_resource_id}",
+    "policyDefinitionId": "{{.Root_scope_resource_id}}/providers/Microsoft.Authorization/policySetDefinitions/Enforce-EncryptTransit",
+    "scope": "{{.Current_scope_resource_id}}",
     "enforcementMode": null
   },
-  "location": "${default_location}",
+  "location": "{{.Default_location}}",
   "identity": {
     "type": "SystemAssigned"
   }

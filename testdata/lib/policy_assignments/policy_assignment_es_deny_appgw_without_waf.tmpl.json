@@ -7,11 +7,11 @@
     "displayName": "Deny-AppGW-Without-WAF",
     "notScopes": [],
     "parameters": {},
-    "policyDefinitionId": "${root_scope_resource_id}/providers/Microsoft.Authorization/policyDefinitions/Deny-AppGW-Without-WAF",
-    "scope": "${current_scope_resource_id}",
+    "policyDefinitionId": "{{.Root_scope_resource_id}}/providers/Microsoft.Authorization/policyDefinitions/Deny-AppGW-Without-WAF",
+    "scope": "{{.Current_scope_resource_id}}",
     "enforcementMode": null
   },
-  "location": "${default_location}",
+  "location": "{{.Default_location}}",
   "identity": {
     "type": "None"
   }
