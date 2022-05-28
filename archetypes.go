@@ -169,7 +169,7 @@ func (ad *ArchetypeDefinition) RemoveLibArchetype(lad *LibArchetypeDefinition) e
 
 // ProjectArchetypeAtManagementGroup takes an existing archetype definition and uses templating to
 // replace tokens in the file with real values.
-func (ad *ArchetypeDefinition) ProjectArchetypeAtManagementGroup(t TemplateData) (*ArchetypeDefinition, error) {
+func (ad *ArchetypeDefinition) ProjectArchetypeAtManagementGroup(t *TemplateData) (*ArchetypeDefinition, error) {
 	newad := ArchetypeDefinition{
 		PolicyDefinitions:    make(map[string]armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]armpolicy.SetDefinition),

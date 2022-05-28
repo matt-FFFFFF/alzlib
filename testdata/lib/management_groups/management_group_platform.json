@@ -1,0 +1,10 @@
+{
+  "name": "platform",
+  "display_name": "platform",
+  "archetype_name": "es_platform",
+  "children": [
+    "connectivity",
+    "identity",
+    "management"
+  ]
+}

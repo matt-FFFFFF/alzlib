@@ -183,11 +183,39 @@ func TestProcessPolicySetDefinitionNoData(t *testing.T) {
 	assert.ErrorContains(t, processPolicySetDefinition(az, make([]byte, 0)), "error unmarshalling policy set definition")
 }
 
-func TestGetLibArchetypeDefinition(t *testing.T) {
+// TestGetLibArchetypeDefinitionInvalidJson tests the processing of an invalid json archetype_definition
+func TestGetLibArchetypeDefinitionInvalidJson(t *testing.T) {
 	data := `{"mykey": {}`
 	_, err := getLibArchetypeDefinition([]byte(data))
 	assert.ErrorContains(t, err, "error marshalling LibArchetypeDefinition JSON object")
 
+}
+
+// TestProcessManagementGroupInvalidJson tests the processing of an invalid json management_group
+func TestProcessManagementGroupInvalidJson(t *testing.T) {
+	az := &AlzLib{}
+	assert.ErrorContains(t, processManagementGroup(az, make([]byte, 0)), "error unmarshalling management group")
+}
+
+// TestProcessManagementGroupInvalidName tests the processing of an invalid json management_group, with no name
+func TestProcessManagementGroupInvalidName(t *testing.T) {
+	az := &AlzLib{}
+	b := []byte(`{"name": ""}`)
+	assert.ErrorContains(t, processManagementGroup(az, b), "management group name is empty or not present")
+}
+
+// TestProcessManagementGroupInvalidJson tests the processing of an invalid json management_group, with no name
+func TestProcessManagementGroupDuplicateName(t *testing.T) {
+	lmg := &LibManagementGroup{
+		Name: "test",
+	}
+	az := &AlzLib{
+		libManagementGroups: map[string]*LibManagementGroup{
+			"test": lmg,
+		},
+	}
+	b := []byte(`{"name": "test"}`)
+	assert.ErrorContains(t, processManagementGroup(az, b), "duplicate management group test")
 }
 
 ///////////////////////////////////////////////////////////////////////////////

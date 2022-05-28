@@ -1,0 +1,9 @@
+{
+  "name": "landing-zones",
+  "display_name": "landing-zones",
+  "archetype_name": "es_landing_zones",
+  "children": [
+    "corp",
+    "online"
+  ]
+}

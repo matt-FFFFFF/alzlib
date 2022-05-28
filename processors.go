@@ -87,6 +87,23 @@ func processPolicySetDefinition(az *AlzLib, data []byte) error {
 	return nil
 }
 
+// processManagementGroup is a processFunc that read the management_group bytes,
+// processes, then adds the created libManagementGroup to the AlzLib
+func processManagementGroup(az *AlzLib, data []byte) error {
+	mg := &LibManagementGroup{}
+	if err := json.Unmarshal(data, mg); err != nil {
+		return fmt.Errorf("error unmarshalling management group: %s", err)
+	}
+	if mg.Name == "" {
+		return fmt.Errorf("management group name is empty or not present")
+	}
+	if _, exists := az.libManagementGroups[mg.Name]; exists {
+		return fmt.Errorf("duplicate management group %s", mg.Name)
+	}
+	az.libManagementGroups[mg.Name] = mg
+	return nil
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // Helper funcs
