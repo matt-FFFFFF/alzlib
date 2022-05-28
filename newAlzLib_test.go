@@ -40,8 +40,14 @@ func Benchmark_NewAlzLib(b *testing.B) {
 	}
 }
 
-// Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
+// Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory
 func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
 	_, err := NewAlzLib("./testdata/badlib-duplicatearchetypedef")
 	assert.ErrorContains(t, err, "duplicate archetype id: duplicate")
+}
+
+// Test_NewAlzLibBadMgFiles tests the creation of a new AlzLib from a valid source directory with no root MG defined
+func Test_NewAlzLibBadMgFiles(t *testing.T) {
+	_, err := NewAlzLib("./testdata/badlib-norootmg")
+	assert.ErrorContains(t, err, "error generating management groups")
 }
