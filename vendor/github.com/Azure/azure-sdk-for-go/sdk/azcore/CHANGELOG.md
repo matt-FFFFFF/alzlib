@@ -1,5 +1,10 @@
 # Release History
 
+## 1.1.0 (2022-06-03)
+
+### Other Changes
+* The one-second floor for `Frequency` when calling `PollUntilDone()` has been removed when running tests.
+
 ## 1.0.0 (2022-05-12)
 
 ### Features Added
