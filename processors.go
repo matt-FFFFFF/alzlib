@@ -8,6 +8,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
+// processFunc is the function signature that is used to process different types of lib file
+type processFunc func(alzlib *AlzLib, data []byte) error
+
 // processArchetypeDefinition is a processFunc that reads the archetype_definition
 // bytes, processes, then adds the created LibArchetypeDefinition to the AlzLib
 func processArchetypeDefinition(az *AlzLib, data []byte) error {
@@ -27,7 +30,7 @@ func processArchetypeExtension(az *AlzLib, data []byte) error {
 		return fmt.Errorf("error processing archetype definition: %s", err)
 	}
 	// remove the prefix so that we can match the id to the definition
-	ext.Id = strings.Replace(ext.Id, "extend_", "", 1)
+	ext.Name = strings.Replace(ext.Name, "extend_", "", 1)
 	az.libArchetypeExtensions = append(az.libArchetypeExtensions, ext)
 	return nil
 }
@@ -40,7 +43,7 @@ func processArchetypeExclusion(az *AlzLib, data []byte) error {
 		return fmt.Errorf("error processing archetype definition: %s", err)
 	}
 	// remove the prefix so that we can match the id to the definition
-	excl.Id = strings.Replace(excl.Id, "exclude_", "", 1)
+	excl.Name = strings.Replace(excl.Name, "exclude_", "", 1)
 	az.libArchetypeExclusions = append(az.libArchetypeExclusions, excl)
 	return nil
 }
@@ -138,7 +141,7 @@ func getLibArchetypeDefinition(data []byte) (*LibArchetypeDefinition, error) {
 		child = c
 	}
 	ad := &LibArchetypeDefinition{
-		Id: id,
+		Name: id,
 	}
 	if err := json.Unmarshal(child, &ad); err != nil {
 		return nil, fmt.Errorf("error processing archetype definition: %s", err)

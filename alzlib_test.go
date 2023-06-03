@@ -3,13 +3,13 @@ package alzlib
 import (
 	"testing"
 
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
 func Test_NewAlzLib(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(az.PolicyAssignments), 35)
 	assert.Equal(t, len(az.PolicyDefinitions), 104)
 	assert.Equal(t, len(az.PolicySetDefinitions), 7)

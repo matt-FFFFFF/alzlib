@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition
@@ -16,9 +16,9 @@ func TestProcessArchetypeDefinitionValid(t *testing.T) {
 		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
 	}
 
-	assert.NilError(t, processArchetypeDefinition(az, sampleData))
+	assert.NoError(t, processArchetypeDefinition(az, sampleData))
 	assert.Equal(t, len(az.libArchetypeDefinitions), 1)
-	assert.Equal(t, az.libArchetypeDefinitions[0].Id, "extend_es_root") // extend_ prefix so we can share the same data with the Test_processArchetypeExtension_valid test
+	assert.Equal(t, az.libArchetypeDefinitions[0].Name, "extend_es_root") // extend_ prefix so we can share the same data with the Test_processArchetypeExtension_valid test
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyAssignments), 1)
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyDefinitions), 1)
 	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicySetDefinitions), 1)
@@ -56,9 +56,9 @@ func TestProcessArchetypeExtensionValid(t *testing.T) {
 		libArchetypeExtensions: make([]*LibArchetypeDefinition, 0),
 	}
 
-	assert.NilError(t, processArchetypeExtension(az, sampleData))
+	assert.NoError(t, processArchetypeExtension(az, sampleData))
 	assert.Equal(t, len(az.libArchetypeExtensions), 1)
-	assert.Equal(t, az.libArchetypeExtensions[0].Id, "es_root")
+	assert.Equal(t, az.libArchetypeExtensions[0].Name, "es_root")
 	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicyAssignments), 1)
 	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicyDefinitions), 1)
 	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicySetDefinitions), 1)
@@ -72,9 +72,9 @@ func TestProcessArchetypeExclusionValid(t *testing.T) {
 		libArchetypeExclusions: make([]*LibArchetypeDefinition, 0),
 	}
 
-	assert.NilError(t, processArchetypeExclusion(az, sampleData))
+	assert.NoError(t, processArchetypeExclusion(az, sampleData))
 	assert.Equal(t, len(az.libArchetypeExclusions), 1)
-	assert.Equal(t, az.libArchetypeExclusions[0].Id, "es_root")
+	assert.Equal(t, az.libArchetypeExclusions[0].Name, "es_root")
 	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicyAssignments), 1)
 	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicyDefinitions), 1)
 	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicySetDefinitions), 1)
@@ -88,7 +88,7 @@ func TestProcessPolicyAssignmentValid(t *testing.T) {
 		PolicyAssignments: make(map[string]*armpolicy.Assignment),
 	}
 
-	assert.NilError(t, processPolicyAssignment(az, sampleData))
+	assert.NoError(t, processPolicyAssignment(az, sampleData))
 	assert.Equal(t, len(az.PolicyAssignments), 1)
 	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Name, "Deny-Storage-http")
 	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Properties.DisplayName, "Secure transfer to storage accounts should be enabled")
@@ -112,7 +112,7 @@ func TestProcessPolicyDefinitionValid(t *testing.T) {
 		PolicyDefinitions: make(map[string]*armpolicy.Definition),
 	}
 
-	assert.NilError(t, processPolicyDefinition(az, sampleData))
+	assert.NoError(t, processPolicyDefinition(az, sampleData))
 	assert.Equal(t, len(az.PolicyDefinitions), 1)
 	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Name, "Append-AppService-httpsonly")
 	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
@@ -136,7 +136,7 @@ func TestProcessSetPolicyDefinitionValid(t *testing.T) {
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 	}
 
-	assert.NilError(t, processPolicySetDefinition(az, sampleData))
+	assert.NoError(t, processPolicySetDefinition(az, sampleData))
 	assert.Equal(t, len(az.PolicySetDefinitions), 1)
 	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Name, "Deploy-MDFC-Config")
 	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Properties.PolicyType, armpolicy.PolicyTypeCustom)

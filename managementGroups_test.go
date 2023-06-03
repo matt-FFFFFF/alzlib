@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestGenerateManagementGroupsNoRoot tests the generation of management groups when there is no root management group.

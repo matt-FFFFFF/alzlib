@@ -32,13 +32,13 @@ func (az *AlzLib) generateManagementGroups() error {
 	return nil
 }
 
-func convertManagementGroupsToHierarchy(name string, az *AlzLib, parent *ManagementGroup) (*ManagementGroup, error) {
+func convertManagementGroupsToHierarchy(name string, az *AlzLib, parent *AlzManagementGroup) (*AlzManagementGroup, error) {
 	lmg, ok := az.libManagementGroups[name]
 	if !ok {
 		return nil, fmt.Errorf("lib management group %s not found", name)
 	}
 
-	mg := &ManagementGroup{
+	mg := &AlzManagementGroup{
 		Name:        name,
 		DisplayName: lmg.DisplayName,
 		parent:      parent,

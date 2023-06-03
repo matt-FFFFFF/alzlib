@@ -1,31 +1,59 @@
 package alzlib
 
 import (
+	"embed"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
+//go:embed lib
+var lib embed.FS
+
 // These are the file prefixes for the resource types
 const (
 	archetypeDefinitionPrefix = "archetype_definition_"
-	archetypeExclusionPrefix  = "archetype_exclusion_"
-	archetypeExtensionPrefix  = "archetype_extension_"
 	policyAssignmentPrefix    = "policy_assignment_"
 	policyDefinitionPrefix    = "policy_definition_"
 	policySetDefinitionPrefix = "policy_set_definition_"
-	managementGroupPrefix     = "management_group_"
 )
+
+// AlzLib is the structure that gets built from the the library files
+// do not create this directly, use NewAlzLib instead.
+type AlzLib struct {
+	Archetypes           map[string]*ArchetypeDefinition
+	PolicyDefinitions    map[string]*armpolicy.Definition
+	PolicySetDefinitions map[string]*armpolicy.SetDefinition
+	PolicyAssignments    map[string]*armpolicy.Assignment
+	RootManagementGroup  *AlzManagementGroup
+	RootScopeId          string
+	RootParentId         string
+	DefaultLocation      string
+	// These are not exported and only used on the initial load
+	libArchetypeDefinitions []*LibArchetypeDefinition
+	libArchetypeExtensions  []*LibArchetypeDefinition
+	libArchetypeExclusions  []*LibArchetypeDefinition
+}
+
+// ArchetypeDefinition represents an archetype definition that hasn't been assigned to a management group
+// maps contain values, rather than pointers, because we don't want to modify the original
+type ArchetypeDefinition struct {
+	AlzLib               *AlzLib
+	PolicyDefinitions    map[string]armpolicy.Definition
+	PolicyAssignments    map[string]armpolicy.Assignment
+	PolicySetDefinitions map[string]armpolicy.SetDefinition
+}
 
 // NewAlzLib returns a new instance of the alzlib library using the supplied directory
 func NewAlzLib(dir string) (*AlzLib, error) {
-	if err := checkDirExists(dir); err != nil {
-		return nil, err
+	if dir != "" {
+		if err := checkDirExists(dir); err != nil {
+			return nil, err
+		}
 	}
 
 	az := &AlzLib{
@@ -34,31 +62,31 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
 		RootManagementGroup:     nil,
-		libManagementGroups:     make(map[string]*LibManagementGroup),
 		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
 	}
 
 	// Walk the directory and process files
-	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+	if err := fs.WalkDir(lib, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking directory %s: %s", dir, err)
 		}
 		// Skip directories
-		if info.IsDir() {
+		if d.IsDir() {
 			return nil
 		}
-		return az.processLibFile(path, info)
+		i, _ := d.Info()
+		return az.processLibFile(path, i)
 	}); err != nil {
 		return nil, err
 	}
 
-	if err := az.generateArchetypes(); err != nil {
-		return nil, fmt.Errorf("error generating archetypes: %s", err)
-	}
+	// if err := az.generateArchetypes(); err != nil {
+	// 	return nil, fmt.Errorf("error generating archetypes: %s", err)
+	// }
 
-	if err := az.generateManagementGroups(); err != nil {
-		return nil, fmt.Errorf("error generating management groups: %s", err)
-	}
+	// if err := az.generateManagementGroups(); err != nil {
+	// 	return nil, fmt.Errorf("error generating management groups: %s", err)
+	// }
 
 	return az, nil
 }
@@ -97,18 +125,6 @@ func (az *AlzLib) processLibFile(path string, info fs.FileInfo) error {
 	// if the file is an archetype definition
 	case strings.HasPrefix(n, archetypeDefinitionPrefix):
 		err = readAndProcessFile(az, path, processArchetypeDefinition)
-
-	// if the file is an archetype exclusion
-	case strings.HasPrefix(n, archetypeExclusionPrefix):
-		err = readAndProcessFile(az, path, processArchetypeExclusion)
-
-	// if the file is an archetype extension
-	case strings.HasPrefix(n, archetypeExtensionPrefix):
-		err = readAndProcessFile(az, path, processArchetypeExtension)
-
-	// if the file is a management group
-	case strings.HasPrefix(n, managementGroupPrefix):
-		err = readAndProcessFile(az, path, processManagementGroup)
 	}
 
 	// If there's an error, wrap it with the file path

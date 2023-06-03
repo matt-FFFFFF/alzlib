@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test_generateArchetypes_policyParameterOverride tests that the resultant policy assignments
@@ -18,7 +18,7 @@ func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                "testarchetype",
+				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
 				Config: &libArchetypeDefinitionConfig{
@@ -58,7 +58,7 @@ func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 		Archetypes:           map[string]*ArchetypeDefinition{},
 	}
 
-	assert.NilError(t, az.generateArchetypes())
+	assert.NoError(t, az.generateArchetypes())
 	assert.Equal(t, az.Archetypes["testarchetype"].PolicyAssignments[aname].Properties.Parameters[pname].Value, "value replaced by archetype config")
 }
 
@@ -74,7 +74,7 @@ func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testi
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                "testarchetype",
+				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
 				Config: &libArchetypeDefinitionConfig{
@@ -129,7 +129,7 @@ func TestGenerateArchetypesPolicyParameterOverrideInvalidAssignmentName(t *testi
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                "testarchetype",
+				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
 				Config: &libArchetypeDefinitionConfig{
@@ -196,7 +196,7 @@ func TestGenerateArchetypesArchetypeExtension(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
@@ -214,7 +214,7 @@ func TestGenerateArchetypesArchetypeExtension(t *testing.T) {
 		},
 		libArchetypeExtensions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{aname},
 				PolicyDefinitions:    []string{pdname},
 				PolicySetDefinitions: []string{psname},
@@ -225,10 +225,10 @@ func TestGenerateArchetypesArchetypeExtension(t *testing.T) {
 
 	// Test the function doesn't return an error and then deep compare to ensure the expected
 	// values are correct.
-	assert.NilError(t, az.generateArchetypes())
-	assert.DeepEqual(t, az.Archetypes[archetype].PolicyAssignments[aname], *pa)
-	assert.DeepEqual(t, az.Archetypes[archetype].PolicyDefinitions[pdname], *pd)
-	assert.DeepEqual(t, az.Archetypes[archetype].PolicySetDefinitions[psname], *psd)
+	assert.NoError(t, az.generateArchetypes())
+	assert.EqualValues(t, az.Archetypes[archetype].PolicyAssignments[aname], *pa)
+	assert.EqualValues(t, az.Archetypes[archetype].PolicyDefinitions[pdname], *pd)
+	assert.EqualValues(t, az.Archetypes[archetype].PolicySetDefinitions[psname], *psd)
 }
 
 // Test_generateArchetypes_archetypeExclusion tests the archetype exclusion process.
@@ -257,7 +257,7 @@ func TestGenerateArchetypesArchetypeExclusion(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{aname},
 				PolicyDefinitions:    []string{pdname},
 				PolicySetDefinitions: []string{psname},
@@ -275,7 +275,7 @@ func TestGenerateArchetypesArchetypeExclusion(t *testing.T) {
 		},
 		libArchetypeExclusions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{aname},
 				PolicyDefinitions:    []string{pdname},
 				PolicySetDefinitions: []string{psname},
@@ -284,7 +284,7 @@ func TestGenerateArchetypesArchetypeExclusion(t *testing.T) {
 		Archetypes: map[string]*ArchetypeDefinition{},
 	}
 
-	assert.NilError(t, az.generateArchetypes())
+	assert.NoError(t, az.generateArchetypes())
 	assert.Equal(t, len(az.Archetypes[archetype].PolicyAssignments), 0)
 	assert.Equal(t, len(az.Archetypes[archetype].PolicyDefinitions), 0)
 	assert.Equal(t, len(az.Archetypes[archetype].PolicySetDefinitions), 0)
@@ -304,7 +304,7 @@ func TestGenerateArchetypesDuplicateSetDefinitions(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicySetDefinitions: []string{psname, psname},
 				Config:               &libArchetypeDefinitionConfig{},
 			},
@@ -328,7 +328,7 @@ func TestGenerateArchetypesNotFoundSetDefinitions(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{psname, psname},
@@ -356,7 +356,7 @@ func TestGenerateArchetypesDuplicateDefinitions(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{pdname, pdname},
 				PolicySetDefinitions: []string{},
@@ -382,7 +382,7 @@ func TestGenerateArchetypesNotFoundDefinitions(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{pdname},
 				PolicySetDefinitions: []string{},
@@ -411,7 +411,7 @@ func TestGenerateArchetypesDuplicateAssignment(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{aname, aname},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
@@ -438,7 +438,7 @@ func TestGenerateArchetypesNotFoundAssignment(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{aname},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
@@ -461,14 +461,14 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 	az := AlzLib{
 		libArchetypeDefinitions: []*LibArchetypeDefinition{
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
 				Config:               &libArchetypeDefinitionConfig{},
 			},
 			{
-				Id:                   archetype,
+				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
@@ -486,7 +486,7 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 // using the make converttestdata command.
 func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	td := TemplateData{
 		Current_scope_resource_id: "managementgroupid",
@@ -496,7 +496,7 @@ func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 	}
 
 	ad, err := az.Archetypes["es_root"].ProjectArchetypeAtManagementGroup(&td)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Location, "location")
 	assert.Equal(t, *ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Scope, "managementgroupid")
 	assert.Equal(t, ad.PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/root-mgmt/providers/Microsoft.OperationalInsights/workspaces/root-la")
