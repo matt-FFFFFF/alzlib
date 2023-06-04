@@ -43,8 +43,8 @@ type AlzManagementGroup struct {
 	PolicySetDefinitions map[string]armpolicy.SetDefinition
 	PolicyAssignments    map[string]armpolicy.Assignment
 	RoleAssignments      map[string]armauthorization.RoleAssignment
-	children             []*AlzManagementGroup
-	parent               *AlzManagementGroup
+	// children             []*AlzManagementGroup
+	// parent               *AlzManagementGroup
 }
 
 // NewAlzLib returns a new instance of the alzlib library, optionally using the supplied directory
@@ -98,7 +98,15 @@ func (az *AlzLib) Init() error {
 	res.PolicyAssignments = nil
 	res.LibArchetypes = nil
 	// Put the results into the AlzLib
-	az.addProcessedResult(res)
+	if err := az.addProcessedResult(res); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (az *AlzLib) GetBuiltInPolicies(client armpolicy.ClientFactory) error {
+	pdc := client.NewDefinitionsClient()
 
 	return nil
 }
