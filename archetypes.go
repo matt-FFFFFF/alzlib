@@ -1,10 +1,7 @@
 package alzlib
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"text/template"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
@@ -24,31 +21,18 @@ func (az *AlzLib) generateArchetypes() error {
 		//
 		// This process will create copies of the policy definitions, policy set definitions, and policy assignments
 		// They will then be modified based on the archetype_config in the lib archetype definition
-		az.Archetypes[lad.Name] = newArchetypeDefinition(az)
+		az.Archetypes[lad.Name] = newArchetype(az)
 		if err := az.Archetypes[lad.Name].AddLibArchetype(lad); err != nil {
 			return err
 		}
 	}
 
-	// Extend the ArchetypeDefinitions with the libArchetypeExtensions slice
-	for _, ext := range az.libArchetypeExtensions {
-		if err := az.Archetypes[ext.Name].AddLibArchetype(ext); err != nil {
-			return err
-		}
-	}
-
-	// Exclude from the ArchetypeDefinitions with the libArchetypeExclusions slice
-	for _, excl := range az.libArchetypeExclusions {
-		if err := az.Archetypes[excl.Name].RemoveLibArchetype(excl); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-// newArchetypeDefinition creates a new archetype definition linked to the supplied AlzLib
-func newArchetypeDefinition(az *AlzLib) *ArchetypeDefinition {
-	return &ArchetypeDefinition{
+// newArchetype creates a new archetype definition linked to the supplied AlzLib
+func newArchetype(az *AlzLib) *Archetype {
+	return &Archetype{
 		AlzLib:               az,
 		PolicyDefinitions:    make(map[string]armpolicy.Definition),
 		PolicyAssignments:    make(map[string]armpolicy.Assignment),
@@ -58,7 +42,7 @@ func newArchetypeDefinition(az *AlzLib) *ArchetypeDefinition {
 
 // AddLibArchetype method adds the supplied lib archetype definition to the archetype definition.
 // This is used at the initial processing of the lib directory as well as for archetype extensions.
-func (ad *ArchetypeDefinition) AddLibArchetype(lad *LibArchetypeDefinition) error {
+func (ad *Archetype) AddLibArchetype(lad *libArchetypeDefinition) error {
 	// add the policy set definitions to the Archetype struct
 	// range over the strings in in the libArchetypeDefinition array
 	for _, ps := range lad.PolicySetDefinitions {
@@ -130,78 +114,4 @@ func (ad *ArchetypeDefinition) AddLibArchetype(lad *LibArchetypeDefinition) erro
 		}
 	}
 	return nil
-}
-
-// RemoveLibArchetype method removed the supplied lib archetype definition from the archetype definition.
-// This is used or archetype exclusions.
-func (ad *ArchetypeDefinition) RemoveLibArchetype(lad *LibArchetypeDefinition) error {
-	// remove the policy set definitions to the Archetype struct
-	// range over the strings in in the libArchetypeDefinition array
-	for _, ps := range lad.PolicySetDefinitions {
-		if _, exists := ad.AlzLib.Archetypes[lad.Name].PolicySetDefinitions[ps]; !exists {
-			return fmt.Errorf("cannot exclude policy set %s from archetype %s as it does not exist", ps, lad.Name)
-		}
-		// remove the policy set definition
-		delete(ad.AlzLib.Archetypes[lad.Name].PolicySetDefinitions, ps)
-	}
-
-	// add the policy definitions to the Archetype struct
-	// range over the strings in in the libArchetypeDefinition array
-	for _, pd := range lad.PolicyDefinitions {
-		if _, exists := ad.AlzLib.Archetypes[lad.Name].PolicyDefinitions[pd]; !exists {
-			return fmt.Errorf("cannot exclude policy definition %s from archetype %s as it does not exist", pd, lad.Name)
-		}
-		// remove the policy definition
-		delete(ad.AlzLib.Archetypes[lad.Name].PolicyDefinitions, pd)
-	}
-
-	// add the policy assignments to the Archetype struct
-	// range over the strings in in the libArchetypeDefinition array
-	for _, pa := range lad.PolicyAssignments {
-		if _, exists := ad.AlzLib.Archetypes[lad.Name].PolicyAssignments[pa]; !exists {
-			return fmt.Errorf("cannot exclude policy assignment %s from archetype %s as it does not exist", pa, lad.Name)
-		}
-		// remove the policy assignment
-		delete(ad.AlzLib.Archetypes[lad.Name].PolicyAssignments, pa)
-	}
-	return nil
-}
-
-// ProjectArchetypeAtManagementGroup takes an existing archetype definition and uses templating to
-// replace tokens in the file with real values.
-func (ad *ArchetypeDefinition) ProjectArchetypeAtManagementGroup(t *TemplateData) (*ArchetypeDefinition, error) {
-	newad := ArchetypeDefinition{
-		PolicyDefinitions:    make(map[string]armpolicy.Definition),
-		PolicySetDefinitions: make(map[string]armpolicy.SetDefinition),
-		PolicyAssignments:    make(map[string]armpolicy.Assignment),
-	}
-
-	for pak, pav := range ad.PolicyAssignments {
-		pavjson, err := json.Marshal(pav)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling policy assignment %s for archetype projection: %s", pak, err)
-		}
-		tmpl, err := template.New("policy assignment").Parse(string(pavjson))
-		if err != nil {
-			return nil, fmt.Errorf("error parsing template policy assignment %s for archetype projection: %s", pak, err)
-		}
-
-		var buf bytes.Buffer
-		err = tmpl.Execute(&buf, t)
-		if err != nil {
-			return nil, fmt.Errorf("error executing template policy assignment %s for archetype projection: %s", pak, err)
-		}
-
-		newpa := armpolicy.Assignment{}
-		err = json.Unmarshal(buf.Bytes(), &newpa)
-		if err != nil {
-			return nil, fmt.Errorf("error creating new policy assignment %s after template execution for archetype projection: %s", pak, err)
-		}
-		newad.PolicyAssignments[pak] = newpa
-	}
-
-	newad.PolicyDefinitions = ad.PolicyDefinitions
-	newad.PolicySetDefinitions = ad.PolicySetDefinitions
-
-	return &newad, nil
 }

@@ -25,7 +25,7 @@ func TestGenerateManagementGroupsNoRoot(t *testing.T) {
 // TestGenerateManagementGroupsDuplicateRoot tests the generation of management groups when there is a duplicate root management group.
 func TestGenerateManagementGroupsDuplicateRoot(t *testing.T) {
 	az := &AlzLib{
-		Archetypes: map[string]*ArchetypeDefinition{
+		Archetypes: map[string]*Archetype{
 			"test": {},
 		},
 		libManagementGroups: map[string]*LibManagementGroup{
@@ -47,7 +47,7 @@ func TestGenerateManagementGroupsDuplicateRoot(t *testing.T) {
 // TestGenerateManagementGroupsDuplicateRoot tests generation of management groups when the referenced archetype cannot be found.
 func TestGenerateManagementGroupsArchetypeNotFound(t *testing.T) {
 	az := &AlzLib{
-		Archetypes: map[string]*ArchetypeDefinition{},
+		Archetypes: map[string]*Archetype{},
 		libManagementGroups: map[string]*LibManagementGroup{
 			"test": {
 				Name:          "test",
@@ -83,7 +83,7 @@ func TestConvertManagementGroupsToHierarchyArchetypeNotFound(t *testing.T) {
 // TestConvertManagementGroupsToHierarchyBadTemplate tests that an error is generated when submitting bad templating data.
 func TestConvertManagementGroupsToHierarchyBadTemplate(t *testing.T) {
 	az := &AlzLib{
-		Archetypes: map[string]*ArchetypeDefinition{
+		Archetypes: map[string]*Archetype{
 			"test": {},
 		},
 		libManagementGroups: map[string]*LibManagementGroup{
@@ -102,7 +102,7 @@ func TestConvertManagementGroupsToHierarchyBadMgProjection(t *testing.T) {
 	paname := "testpaname {{.BadData}}"
 	az := &AlzLib{
 		RootScopeId: "test",
-		Archetypes: map[string]*ArchetypeDefinition{
+		Archetypes: map[string]*Archetype{
 			"test": {
 				PolicyAssignments: map[string]armpolicy.Assignment{
 					"badtemplate": {
@@ -127,7 +127,7 @@ func TestConvertManagementGroupsToHierarchyBadMgProjection(t *testing.T) {
 func TestConvertManagementGroupsToHierarchyBadChildMg(t *testing.T) {
 	az := &AlzLib{
 		RootScopeId: "root",
-		Archetypes: map[string]*ArchetypeDefinition{
+		Archetypes: map[string]*Archetype{
 			"test": {},
 		},
 		libManagementGroups: map[string]*LibManagementGroup{

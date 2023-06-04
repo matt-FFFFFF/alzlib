@@ -16,21 +16,14 @@ func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 	ptype := armpolicy.ParameterTypeString
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
-				Config: &libArchetypeDefinitionConfig{
-					Parameters: map[string]interface{}{
-						aname: map[string]interface{}{
-							pname: "value replaced by archetype config",
-						},
-					},
-				},
 			},
 		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
+		PolicyDefinitions: map[string]armpolicy.Definition{
 			pdname: {
 				Name: &pdname,
 				Properties: &armpolicy.DefinitionProperties{
@@ -42,7 +35,7 @@ func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 				},
 			},
 		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
+		PolicyAssignments: map[string]armpolicy.Assignment{
 			aname: {
 				Name: &aname,
 				Properties: &armpolicy.AssignmentProperties{
@@ -54,8 +47,8 @@ func TestGenerateArchetypesPolicyParameterOverride(t *testing.T) {
 				},
 			},
 		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
-		Archetypes:           map[string]*ArchetypeDefinition{},
+		PolicySetDefinitions: map[string]armpolicy.SetDefinition{},
+		Archetypes:           map[string]Archetype{},
 	}
 
 	assert.NoError(t, az.generateArchetypes())
@@ -68,25 +61,17 @@ func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testi
 	aname := "testassignment1"
 	pdname := "testdefinition1"
 	pname := "testparameter1"
-	pname2 := "testparameter2"
 	ptype := armpolicy.ParameterTypeString
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
-				Config: &libArchetypeDefinitionConfig{
-					Parameters: map[string]interface{}{
-						aname: map[string]interface{}{
-							pname2: "value replaced by archetype config",
-						},
-					},
-				},
 			},
 		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
+		PolicyDefinitions: map[string]armpolicy.Definition{
 			pdname: {
 				Name: &pdname,
 				Properties: &armpolicy.DefinitionProperties{
@@ -98,7 +83,7 @@ func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testi
 				},
 			},
 		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
+		PolicyAssignments: map[string]armpolicy.Assignment{
 			aname: {
 				Name: &aname,
 				Properties: &armpolicy.AssignmentProperties{
@@ -110,8 +95,8 @@ func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testi
 				},
 			},
 		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
-		Archetypes:           map[string]*ArchetypeDefinition{},
+		PolicySetDefinitions: map[string]armpolicy.SetDefinition{},
+		Archetypes:           map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "archetype_config.parameters error: cannot modify policy parameter")
@@ -121,27 +106,19 @@ func TestGenerateArchetypes_policyParameterOverrideInvalidParameterName(t *testi
 // error is returned when an invalid parameter name is used in the archetype_config parameters section.
 func TestGenerateArchetypesPolicyParameterOverrideInvalidAssignmentName(t *testing.T) {
 	aname := "testassignment1"
-	aname2 := "testassignment2"
 	pdname := "testdefinition1"
 	pname := "testparameter1"
 	ptype := armpolicy.ParameterTypeString
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:              "testarchetype",
 				PolicyAssignments: []string{aname},
 				PolicyDefinitions: []string{pdname},
-				Config: &libArchetypeDefinitionConfig{
-					Parameters: map[string]interface{}{
-						aname2: map[string]interface{}{
-							pname: "value replaced by archetype config",
-						},
-					},
-				},
 			},
 		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
+		PolicyDefinitions: map[string]armpolicy.Definition{
 			pdname: {
 				Name: &pdname,
 				Properties: &armpolicy.DefinitionProperties{
@@ -153,7 +130,7 @@ func TestGenerateArchetypesPolicyParameterOverrideInvalidAssignmentName(t *testi
 				},
 			},
 		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
+		PolicyAssignments: map[string]armpolicy.Assignment{
 			aname: {
 				Name: &aname,
 				Properties: &armpolicy.AssignmentProperties{
@@ -165,129 +142,11 @@ func TestGenerateArchetypesPolicyParameterOverrideInvalidAssignmentName(t *testi
 				},
 			},
 		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
-		Archetypes:           map[string]*ArchetypeDefinition{},
+		PolicySetDefinitions: map[string]armpolicy.SetDefinition{},
+		Archetypes:           map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "archetype_config.parameters error: cannot modify policy assignment")
-}
-
-// Test_generateArchetypes_archetypeExtension tests the archetype extension process.
-// It starts with an empty archetype that is extended by adding a policy assignment,
-// policy definition, and policy set definition.
-func TestGenerateArchetypesArchetypeExtension(t *testing.T) {
-	archetype := "testarchetype"
-	aname := "testassignment1"
-	pdname := "testdefinition1"
-	psname := "testsetdefinition1"
-
-	// The rather unwieldy literals that we use for the testing are:
-	pa := &armpolicy.Assignment{
-		Name:       &aname,
-		Properties: &armpolicy.AssignmentProperties{},
-	}
-	pd := &armpolicy.Definition{
-		Name: &pdname,
-	}
-	psd := &armpolicy.SetDefinition{
-		Name: &psname,
-	}
-
-	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
-			{
-				Name:                 archetype,
-				PolicyAssignments:    []string{},
-				PolicyDefinitions:    []string{},
-				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
-			},
-		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
-			pdname: pd,
-		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: pa,
-		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
-			psname: psd,
-		},
-		libArchetypeExtensions: []*LibArchetypeDefinition{
-			{
-				Name:                 archetype,
-				PolicyAssignments:    []string{aname},
-				PolicyDefinitions:    []string{pdname},
-				PolicySetDefinitions: []string{psname},
-			},
-		},
-		Archetypes: map[string]*ArchetypeDefinition{},
-	}
-
-	// Test the function doesn't return an error and then deep compare to ensure the expected
-	// values are correct.
-	assert.NoError(t, az.generateArchetypes())
-	assert.EqualValues(t, az.Archetypes[archetype].PolicyAssignments[aname], *pa)
-	assert.EqualValues(t, az.Archetypes[archetype].PolicyDefinitions[pdname], *pd)
-	assert.EqualValues(t, az.Archetypes[archetype].PolicySetDefinitions[psname], *psd)
-}
-
-// Test_generateArchetypes_archetypeExclusion tests the archetype exclusion process.
-// It starts with an archetype that has one each of policy assignment, policy definition
-// and policy set definition.
-// This is excluded by removing the policy assignment policy definition, and policy set definition.
-// The resulting archetype should have no policy assignments, no policy definitions, and no policy set definitions.
-func TestGenerateArchetypesArchetypeExclusion(t *testing.T) {
-	archetype := "testarchetype"
-	aname := "testassignment1"
-	pdname := "testdefinition1"
-	psname := "testsetdefinition1"
-
-	// The rather unwieldy literals that we use for the testing are:
-	pa := &armpolicy.Assignment{
-		Name:       &aname,
-		Properties: &armpolicy.AssignmentProperties{},
-	}
-	pd := &armpolicy.Definition{
-		Name: &pdname,
-	}
-	psd := &armpolicy.SetDefinition{
-		Name: &psname,
-	}
-
-	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
-			{
-				Name:                 archetype,
-				PolicyAssignments:    []string{aname},
-				PolicyDefinitions:    []string{pdname},
-				PolicySetDefinitions: []string{psname},
-				Config:               &libArchetypeDefinitionConfig{},
-			},
-		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
-			pdname: pd,
-		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: pa,
-		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
-			psname: psd,
-		},
-		libArchetypeExclusions: []*LibArchetypeDefinition{
-			{
-				Name:                 archetype,
-				PolicyAssignments:    []string{aname},
-				PolicyDefinitions:    []string{pdname},
-				PolicySetDefinitions: []string{psname},
-			},
-		},
-		Archetypes: map[string]*ArchetypeDefinition{},
-	}
-
-	assert.NoError(t, az.generateArchetypes())
-	assert.Equal(t, len(az.Archetypes[archetype].PolicyAssignments), 0)
-	assert.Equal(t, len(az.Archetypes[archetype].PolicyDefinitions), 0)
-	assert.Equal(t, len(az.Archetypes[archetype].PolicySetDefinitions), 0)
 }
 
 // TestGenerateArchetypesDuplicateSetDefinitions tests the scenario that there are duplicate policy
@@ -302,17 +161,16 @@ func TestGenerateArchetypesDuplicateSetDefinitions(t *testing.T) {
 	}
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicySetDefinitions: []string{psname, psname},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
-			psname: psd,
+		PolicySetDefinitions: map[string]armpolicy.SetDefinition{
+			psname: *psd,
 		},
-		Archetypes: map[string]*ArchetypeDefinition{},
+		Archetypes: map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy set definition in archetype testarchetype")
@@ -326,17 +184,16 @@ func TestGenerateArchetypesNotFoundSetDefinitions(t *testing.T) {
 
 	// The rather unwieldy literals that we use for the testing are:
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{psname, psname},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
-		Archetypes:           map[string]*ArchetypeDefinition{},
+		PolicySetDefinitions: map[string]armpolicy.SetDefinition{},
+		Archetypes:           map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "policy set definition testsetdefinition1 not found for archetype testarchetype")
@@ -354,19 +211,18 @@ func TestGenerateArchetypesDuplicateDefinitions(t *testing.T) {
 	}
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{pdname, pdname},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{
-			pdname: pd,
+		PolicyDefinitions: map[string]armpolicy.Definition{
+			pdname: *pd,
 		},
-		Archetypes: map[string]*ArchetypeDefinition{},
+		Archetypes: map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy definition in archetype testarchetype")
@@ -380,17 +236,16 @@ func TestGenerateArchetypesNotFoundDefinitions(t *testing.T) {
 
 	// The rather unwieldy literals that we use for the testing are:
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{pdname},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicyDefinitions: map[string]*armpolicy.Definition{},
-		Archetypes:        map[string]*ArchetypeDefinition{},
+		PolicyDefinitions: map[string]armpolicy.Definition{},
+		Archetypes:        map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "policy definition testdefinition1 not found for archetype testarchetype")
@@ -409,19 +264,18 @@ func TestGenerateArchetypesDuplicateAssignment(t *testing.T) {
 	}
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{aname, aname},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{
-			aname: pa,
+		PolicyAssignments: map[string]armpolicy.Assignment{
+			aname: *pa,
 		},
-		Archetypes: map[string]*ArchetypeDefinition{},
+		Archetypes: map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate policy assignment in archetype testarchetype")
@@ -436,17 +290,16 @@ func TestGenerateArchetypesNotFoundAssignment(t *testing.T) {
 	// The rather unwieldy literals that we use for the testing are:
 
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{aname},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		PolicyAssignments: map[string]*armpolicy.Assignment{},
-		Archetypes:        map[string]*ArchetypeDefinition{},
+		PolicyAssignments: map[string]armpolicy.Assignment{},
+		Archetypes:        map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "policy assignment testassignment1 not found for archetype testarchetype")
@@ -459,23 +312,21 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 
 	// The rather unwieldy literals that we use for the testing are:
 	az := AlzLib{
-		libArchetypeDefinitions: []*LibArchetypeDefinition{
+		libArchetypeDefinitions: []*libArchetypeDefinition{
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 			{
 				Name:                 archetype,
 				PolicyAssignments:    []string{},
 				PolicyDefinitions:    []string{},
 				PolicySetDefinitions: []string{},
-				Config:               &libArchetypeDefinitionConfig{},
 			},
 		},
-		Archetypes: map[string]*ArchetypeDefinition{},
+		Archetypes: map[string]Archetype{},
 	}
 
 	assert.ErrorContains(t, az.generateArchetypes(), "duplicate archetype id: testarchetype")
@@ -487,13 +338,6 @@ func TestGenerateArchetypesDuplicateArchetype(t *testing.T) {
 func TestProjectArchetypeAtManagementGroupValid(t *testing.T) {
 	az, err := NewAlzLib("./testdata/lib")
 	assert.NoError(t, err)
-
-	td := TemplateData{
-		Current_scope_resource_id: "managementgroupid",
-		Default_location:          "location",
-		Root_scope_id:             "root",
-		Root_scope_resource_id:    "rootid",
-	}
 
 	ad, err := az.Archetypes["es_root"].ProjectArchetypeAtManagementGroup(&td)
 	assert.NoError(t, err)
@@ -514,7 +358,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplate(t *testing.T) {
 		Root_scope_resource_id:    "rootid",
 	}
 
-	ad := ArchetypeDefinition{
+	ad := Archetype{
 		PolicyAssignments: map[string]armpolicy.Assignment{
 			"badtemplate": {
 				Name: &paname,
@@ -533,7 +377,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplateData(t *testing.T) {
 		Root_scope_id: "root",
 	}
 
-	ad := ArchetypeDefinition{
+	ad := Archetype{
 		PolicyAssignments: map[string]armpolicy.Assignment{
 			"badtemplate": {
 				Name: &paname,
@@ -553,7 +397,7 @@ func TestProjectArchetypeAtManagementGroupBadTemplateJsonError(t *testing.T) {
 		Root_scope_id: `"`,
 	}
 
-	ad := ArchetypeDefinition{
+	ad := Archetype{
 		PolicyAssignments: map[string]armpolicy.Assignment{
 			"badtemplate": {
 				Name: &paname,

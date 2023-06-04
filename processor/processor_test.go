@@ -1,4 +1,4 @@
-package alzlib
+package processor
 
 import (
 	"testing"
@@ -12,210 +12,113 @@ import (
 // although in real use this would not be a valid id for an archetype definition
 func TestProcessArchetypeDefinitionValid(t *testing.T) {
 	sampleData := getSampleArchetypeDefinition_valid()
-	az := &AlzLib{
-		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
+	res := &Result{
+		LibArchetypes: make(map[string]*LibArchetype, 0),
 	}
 
-	assert.NoError(t, processArchetypeDefinition(az, sampleData))
-	assert.Equal(t, len(az.libArchetypeDefinitions), 1)
-	assert.Equal(t, az.libArchetypeDefinitions[0].Name, "extend_es_root") // extend_ prefix so we can share the same data with the Test_processArchetypeExtension_valid test
-	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyAssignments), 1)
-	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicyDefinitions), 1)
-	assert.Equal(t, len(az.libArchetypeDefinitions[0].PolicySetDefinitions), 1)
-	assert.Equal(t, az.libArchetypeDefinitions[0].Config.Parameters["Deploy-MDFC-Config"].(map[string]interface{})["emailSecurityContact"], "test@test.com")
-}
-
-// TestProcessArchetypeDefinitionMultipleTopLevelObjects tests that the correct error
-// is generated when multiple top level objects are present in the JSON of an archetype definition
-func TestProcessArchetypeDefinitionMultipleTopLevelObjects(t *testing.T) {
-	sampleData := getSampleArchetypeDefinition_multipleTopLevelObjects()
-	az := &AlzLib{
-		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
-	}
-
-	assert.ErrorContains(t, processArchetypeDefinition(az, sampleData), "expected 1 top-level object, got 2")
+	assert.NoError(t, processArchetypeDefinition(res, sampleData))
+	assert.Equal(t, len(res.LibArchetypes), 1)
+	assert.Equal(t, len(res.LibArchetypes["test"].PolicyAssignments), 1)
+	assert.Equal(t, len(res.LibArchetypes["test"].PolicyDefinitions), 1)
+	assert.Equal(t, len(res.LibArchetypes["test"].PolicySetDefinitions), 1)
 }
 
 // TestProcessArchetypeDefinition_multipleTopLevelObjects tests that the correct error
 // is generated when there as JSON errors in the archetype definition
 func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
 	sampleData := getSampleArchetypeDefinition_invalidJson()
-	az := &AlzLib{
-		libArchetypeDefinitions: make([]*LibArchetypeDefinition, 0),
+	res := &Result{
+		LibArchetypes: make(map[string]*LibArchetype, 0),
 	}
 
-	assert.ErrorContains(t, processArchetypeDefinition(az, sampleData), "invalid character '[' after object key")
-}
-
-// TestProcessArchetypeExtensionValid tests the processing of a valid archetype extension
-// The same sample data is used, as for the valid archetype definition test
-// This process should correctly remove the extend_ prefix from the Id
-func TestProcessArchetypeExtensionValid(t *testing.T) {
-	sampleData := getSampleArchetypeExtension_valid()
-	az := &AlzLib{
-		libArchetypeExtensions: make([]*LibArchetypeDefinition, 0),
-	}
-
-	assert.NoError(t, processArchetypeExtension(az, sampleData))
-	assert.Equal(t, len(az.libArchetypeExtensions), 1)
-	assert.Equal(t, az.libArchetypeExtensions[0].Name, "es_root")
-	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicyAssignments), 1)
-	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicyDefinitions), 1)
-	assert.Equal(t, len(az.libArchetypeExtensions[0].PolicySetDefinitions), 1)
-	assert.Equal(t, az.libArchetypeExtensions[0].Config.Parameters["Deploy-MDFC-Config"].(map[string]interface{})["emailSecurityContact"], "test@test.com")
-}
-
-// TestProcessArchetypeExclusionValid tests the processing of a valid archetype exclusion
-func TestProcessArchetypeExclusionValid(t *testing.T) {
-	sampleData := getSampleArchetypeExclusion_valid()
-	az := &AlzLib{
-		libArchetypeExclusions: make([]*LibArchetypeDefinition, 0),
-	}
-
-	assert.NoError(t, processArchetypeExclusion(az, sampleData))
-	assert.Equal(t, len(az.libArchetypeExclusions), 1)
-	assert.Equal(t, az.libArchetypeExclusions[0].Name, "es_root")
-	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicyAssignments), 1)
-	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicyDefinitions), 1)
-	assert.Equal(t, len(az.libArchetypeExclusions[0].PolicySetDefinitions), 1)
-	assert.Equal(t, az.libArchetypeExclusions[0].Config.Parameters["Deploy-MDFC-Config"].(map[string]interface{})["emailSecurityContact"], "test@test.com")
+	assert.ErrorContains(t, processArchetypeDefinition(res, sampleData), "invalid character '[' after object key")
 }
 
 // TestProcessPolicyAssignmentValid tests the processing of a valid policy assignment
 func TestProcessPolicyAssignmentValid(t *testing.T) {
 	sampleData := getSamplePolicyAssignment()
-	az := &AlzLib{
+	res := &Result{
 		PolicyAssignments: make(map[string]*armpolicy.Assignment),
 	}
 
-	assert.NoError(t, processPolicyAssignment(az, sampleData))
-	assert.Equal(t, len(az.PolicyAssignments), 1)
-	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Name, "Deny-Storage-http")
-	assert.Equal(t, *az.PolicyAssignments["Deny-Storage-http"].Properties.DisplayName, "Secure transfer to storage accounts should be enabled")
+	assert.NoError(t, processPolicyAssignment(res, sampleData))
+	assert.Equal(t, len(res.PolicyAssignments), 1)
+	assert.Equal(t, *res.PolicyAssignments["Deny-Storage-http"].Name, "Deny-Storage-http")
+	assert.Equal(t, *res.PolicyAssignments["Deny-Storage-http"].Properties.DisplayName, "Secure transfer to storage accounts should be enabled")
 }
 
 // TestProcessPolicyAssignmentNoName tests that the processing of a assignment
 // with a missing name field throws the correct error
 func TestProcessPolicyAssignmentNoName(t *testing.T) {
 	sampleData := getSamplePolicyAssignment_noName()
-	az := &AlzLib{
+	res := &Result{
 		PolicyAssignments: make(map[string]*armpolicy.Assignment),
 	}
-
-	assert.ErrorContains(t, processPolicyAssignment(az, sampleData), "policy assignment name is empty or not present")
+	assert.ErrorContains(t, processPolicyAssignment(res, sampleData), "policy assignment name is empty or not present")
 }
 
 // TestProcessPolicyDefinitionValid tests the processing of a valid policy definition
 func TestProcessPolicyDefinitionValid(t *testing.T) {
 	sampleData := getSamplePolicyDefinition()
-	az := &AlzLib{
+	res := &Result{
 		PolicyDefinitions: make(map[string]*armpolicy.Definition),
 	}
-
-	assert.NoError(t, processPolicyDefinition(az, sampleData))
-	assert.Equal(t, len(az.PolicyDefinitions), 1)
-	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Name, "Append-AppService-httpsonly")
-	assert.Equal(t, *az.PolicyDefinitions["Append-AppService-httpsonly"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
+	assert.NoError(t, processPolicyDefinition(res, sampleData))
+	assert.Equal(t, len(res.PolicyDefinitions), 1)
+	assert.Equal(t, *res.PolicyDefinitions["Append-AppService-httpsonly"].Name, "Append-AppService-httpsonly")
+	assert.Equal(t, *res.PolicyDefinitions["Append-AppService-httpsonly"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
 }
 
 // TestProcessPolicyDefinitionNoName tests that the processing of a definition
 // with a missing name field throws the correct error
 func TestProcessPolicyDefinitionNoName(t *testing.T) {
 	sampleData := getSamplePolicyDefinition_noName()
-	az := &AlzLib{
+	res := &Result{
 		PolicyDefinitions: make(map[string]*armpolicy.Definition),
 	}
-
-	assert.ErrorContains(t, processPolicyDefinition(az, sampleData), "policy definition name is empty or not present")
+	assert.ErrorContains(t, processPolicyDefinition(res, sampleData), "policy definition name is empty or not present")
 }
 
 // TestProcessSetPolicyDefinitionValid tests the processing of a valid policy set definition
 func TestProcessSetPolicyDefinitionValid(t *testing.T) {
 	sampleData := getSamplePolicySetDefinition()
-	az := &AlzLib{
+	res := &Result{
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 	}
 
-	assert.NoError(t, processPolicySetDefinition(az, sampleData))
-	assert.Equal(t, len(az.PolicySetDefinitions), 1)
-	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Name, "Deploy-MDFC-Config")
-	assert.Equal(t, *az.PolicySetDefinitions["Deploy-MDFC-Config"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
+	assert.NoError(t, processPolicySetDefinition(res, sampleData))
+	assert.Equal(t, len(res.PolicySetDefinitions), 1)
+	assert.Equal(t, *res.PolicySetDefinitions["Deploy-MDFC-Config"].Name, "Deploy-MDFC-Config")
+	assert.Equal(t, *res.PolicySetDefinitions["Deploy-MDFC-Config"].Properties.PolicyType, armpolicy.PolicyTypeCustom)
 }
 
 // TestProcessPolicySetDefinitionNoName tests that the processing of a set definition
 // with a missing name field throws the correct error
 func TestProcessPolicySetDefinitionNoName(t *testing.T) {
 	sampleData := getSamplePolicySetDefinition_noName()
-	az := &AlzLib{
+	res := &Result{
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 	}
 
-	assert.ErrorContains(t, processPolicySetDefinition(az, sampleData), "policy set definition name is empty or not present")
-}
-
-// TestProcessArchetypeExtensionInvalid tests the processing of an invalid archetype extension with no data
-func TestProcessArchetypeExtensionNoData(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processArchetypeExtension(az, make([]byte, 0)), "error processing archetype definition")
-}
-
-// TestProcessArchetypeExclusionInvalid tests the processing of an invalid archetype exclusion with no data
-func TestProcessArchetypeExclusionNoData(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processArchetypeExclusion(az, make([]byte, 0)), "error processing archetype definition")
+	assert.ErrorContains(t, processPolicySetDefinition(res, sampleData), "policy set definition name is empty or not present")
 }
 
 // TestProcessPolicyAssignmentNoData tests the processing of an invalid policy assignment with no data
 func TestProcessPolicyAssignmentNoData(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processPolicyAssignment(az, make([]byte, 0)), "error unmarshalling policy assignment")
+	res := &Result{}
+	assert.ErrorContains(t, processPolicyAssignment(res, make([]byte, 0)), "error unmarshalling policy assignment")
 }
 
 // TestProcessPolicyDefinitionNoData tests the processing of an invalid policy definition with no data
 func TestProcessPolicyDefinitionNoData(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processPolicyDefinition(az, make([]byte, 0)), "error unmarshalling policy definition")
+	res := &Result{}
+	assert.ErrorContains(t, processPolicyDefinition(res, make([]byte, 0)), "error unmarshalling policy definition")
 }
 
 // TestProcessSetPolicyDefinitionNoData tests the processing of an invalid policy set definition with no data
 func TestProcessPolicySetDefinitionNoData(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processPolicySetDefinition(az, make([]byte, 0)), "error unmarshalling policy set definition")
-}
-
-// TestGetLibArchetypeDefinitionInvalidJson tests the processing of an invalid json archetype_definition
-func TestGetLibArchetypeDefinitionInvalidJson(t *testing.T) {
-	data := `{"mykey": {}`
-	_, err := getLibArchetypeDefinition([]byte(data))
-	assert.ErrorContains(t, err, "error marshalling LibArchetypeDefinition JSON object")
-
-}
-
-// TestProcessManagementGroupInvalidJson tests the processing of an invalid json management_group
-func TestProcessManagementGroupInvalidJson(t *testing.T) {
-	az := &AlzLib{}
-	assert.ErrorContains(t, processManagementGroup(az, make([]byte, 0)), "error unmarshalling management group")
-}
-
-// TestProcessManagementGroupInvalidName tests the processing of an invalid json management_group, with no name
-func TestProcessManagementGroupInvalidName(t *testing.T) {
-	az := &AlzLib{}
-	b := []byte(`{"name": ""}`)
-	assert.ErrorContains(t, processManagementGroup(az, b), "management group name is empty or not present")
-}
-
-// TestProcessManagementGroupInvalidJson tests the processing of an invalid json management_group, with no name
-func TestProcessManagementGroupDuplicateName(t *testing.T) {
-	lmg := &LibManagementGroup{
-		Name: "test",
-	}
-	az := &AlzLib{
-		libManagementGroups: map[string]*LibManagementGroup{
-			"test": lmg,
-		},
-	}
-	b := []byte(`{"name": "test"}`)
-	assert.ErrorContains(t, processManagementGroup(az, b), "duplicate management group test")
+	res := &Result{}
+	assert.ErrorContains(t, processPolicySetDefinition(res, make([]byte, 0)), "error unmarshalling policy set definition")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -227,97 +130,21 @@ func TestProcessManagementGroupDuplicateName(t *testing.T) {
 // getSampleArchetypeDefinition_valid returns a valid archetype definition
 func getSampleArchetypeDefinition_valid() []byte {
 	return []byte(`{
-	"extend_es_root": {
-		"policy_assignments": [
-			"Deploy-ASC-Monitoring"
-		],
-		"policy_definitions": [
-			"Append-AppService-httpsonly"
-		],
-		"policy_set_definitions": [
-			"Deny-PublicPaaSEndpoints"
-		],
-		"role_definitions": [
-			"Network-Subnet-Contributor"
-		],
-		"archetype_config": {
-			"parameters": {
-				"Deploy-MDFC-Config": {
-					"emailSecurityContact": "test@test.com"
-				}
-			},
-			"access_control": {}
-		}
-	}
-}`)
+	"name": "test",
+	"policy_assignments": [
+		"Deploy-ASC-Monitoring"
+	],
+	"policy_definitions": [
+		"Append-AppService-httpsonly"
+	],
+	"policy_set_definitions": [
+		"Deny-PublicPaaSEndpoints"
+	],
+	"role_definitions": [
+		"Network-Subnet-Contributor"
+	]
 }
-
-// getSampleArchetypeExtension_valid returns a valid archetype extension
-func getSampleArchetypeExtension_valid() []byte {
-	return getSampleArchetypeDefinition_valid()
-}
-
-// getSampleArchetypeExclusion_valid returns a valid archetype exclusion
-func getSampleArchetypeExclusion_valid() []byte {
-	return []byte(`{
-		"exclude_es_root": {
-			"policy_assignments": [
-				"Deploy-ASC-Monitoring"
-			],
-			"policy_definitions": [
-				"Deploy-ASC-SecurityContacts"
-			],
-			"policy_set_definitions": [
-				"Deny-PublicPaaSEndpoints"
-			],
-			"role_definitions": [],
-			"archetype_config": {
-				"parameters": {
-					"Deploy-MDFC-Config": {
-						"emailSecurityContact": "test@test.com"
-					}
-				},
-				"access_control": {}
-			}
-		}
-	}
-	`)
-}
-
-// getSampleArchetypeDefinition_multipleTopLevelObjects returns an invalid archetype definition
-// with multiple top level objects
-func getSampleArchetypeDefinition_multipleTopLevelObjects() []byte {
-	return []byte(`{
-		"es_root": {
-			"policy_assignments": [
-				"Deploy-ASC-Monitoring"
-			],
-			"policy_definitions": [
-				"Append-AppService-httpsonly"
-			],
-			"policy_set_definitions": [
-				"Deny-PublicPaaSEndpoints"
-			],
-			"role_definitions": [
-				"Network-Subnet-Contributor"
-			],
-			"archetype_config": {
-				"parameters": {
-					"Deploy-MDFC-Config": {
-						"emailSecurityContact": "test@test.com"
-					}
-				},
-				"access_control": {}
-			}
-		},
-		"es_root_2": {
-			"policy_assignments": [],
-			"policy_definitions": [],
-			"policy_set_definitions": [],
-			"role_definitions": [],
-			"archetype_config": []
-		}
-	}`)
+`)
 }
 
 // getSampleArchetypeDefinition_invalidJson returns an invalid JSON byte slice
