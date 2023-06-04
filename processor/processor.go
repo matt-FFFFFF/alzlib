@@ -1,11 +1,10 @@
+// package processor is used to process the library files
 package processor
 
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/fs"
-	"os"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
@@ -18,6 +17,7 @@ const (
 	policyAssignmentPrefix    = "policy_assignment_"
 	policyDefinitionPrefix    = "policy_definition_"
 	policySetDefinitionPrefix = "policy_set_definition_"
+	roleDefinitionPrefix      = "role_definition_"
 )
 
 // Result is the structure that gets built by scanning the library files
@@ -58,7 +58,6 @@ func (client *ProcessorClient) Process(res *Result) error {
 	res.PolicyDefinitions = make(map[string]*armpolicy.Definition)
 	res.PolicySetDefinitions = make(map[string]*armpolicy.SetDefinition)
 
-	errs := make([]error, 0)
 	// Walk the embedded lib FS and process files
 	if err := fs.WalkDir(client.fs, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -68,46 +67,47 @@ func (client *ProcessorClient) Process(res *Result) error {
 		if d.IsDir() {
 			return nil
 		}
-		i, err := d.Info()
+		// i, err := d.Info()
+		// if err != nil {
+		// 	return fmt.Errorf("error getting file info for %s: %s", path, err)
+		// }
+		file, err := client.fs.Open(path)
 		if err != nil {
-			return fmt.Errorf("error getting file info for %s: %s", path, err)
+			return fmt.Errorf("error opening file %s: %s", path, err)
 		}
-		return classifyLibFile(res, path, i)
+		return classifyLibFile(res, file, d.Name())
 	}); err != nil {
-		errs = append(errs, err)
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%d errors processing library files: %v", len(errs), errs)
+		return fmt.Errorf("error walking library files: %s", err)
 	}
 	return nil
 }
 
 // classifyLibFile identifies the supplied file and adds calls the appropriate processFunc
-func classifyLibFile(res *Result, path string, info fs.FileInfo) error {
+func classifyLibFile(res *Result, file fs.File, name string) error {
 	err := error(nil)
 	// process by file type
-	switch n := strings.ToLower(info.Name()); {
+	switch n := strings.ToLower(name); {
 
 	// if the file is a policy definition
 	case strings.HasPrefix(n, policyDefinitionPrefix):
-		err = readAndProcessFile(res, path, processPolicyDefinition)
+		err = readAndProcessFile(res, file, processPolicyDefinition)
 
 	// if the file is a policy set definition
 	case strings.HasPrefix(n, policySetDefinitionPrefix):
-		err = readAndProcessFile(res, path, processPolicySetDefinition)
+		err = readAndProcessFile(res, file, processPolicySetDefinition)
 
 	// if the file is a policy assignment
 	case strings.HasPrefix(n, policyAssignmentPrefix):
-		err = readAndProcessFile(res, path, processPolicyAssignment)
+		err = readAndProcessFile(res, file, processPolicyAssignment)
 
 	// if the file is an archetype definition
 	case strings.HasPrefix(n, archetypeDefinitionPrefix):
-		err = readAndProcessFile(res, path, processArchetypeDefinition)
+		err = readAndProcessFile(res, file, processArchetypeDefinition)
 	}
 
 	// If there's an error, wrap it with the file path
 	if err != nil {
-		err = fmt.Errorf("error processing file %s: %s", path, err)
+		err = fmt.Errorf("error processing file: %s", err)
 	}
 	return err
 }
@@ -166,15 +166,21 @@ func processPolicySetDefinition(res *Result, data []byte) error {
 }
 
 // readAndProcessFile reads the file bytes at the supplied path and processes it using the supplied processFunc
-func readAndProcessFile(res *Result, path string, processFn processFunc) error {
+func readAndProcessFile(res *Result, file fs.File, processFn processFunc) error {
 	// open the file and read the contents
-	f, err := os.Open(path)
+	// f, err := os.Open(path)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer f.Close()
+
+	s, err := file.Stat()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	data, err := io.ReadAll(f)
-	if err != nil {
+	data := make([]byte, s.Size())
+	defer file.Close() // nolint: errcheck
+	if _, err := file.Read(data); err != nil {
 		return err
 	}
 

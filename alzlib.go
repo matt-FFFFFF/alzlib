@@ -3,11 +3,11 @@ package alzlib
 import (
 	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	"github.com/matt-FFFFFF/alzlib/processor"
 )
 
 //go:embed lib
@@ -29,9 +29,6 @@ type AlzLib struct {
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	//	RootManagementGroup  *AlzManagementGroup
-	// These are not exported and only used on the initial load
-	libArchetypeDefinitions []*libArchetypeDefinition
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
@@ -64,35 +61,33 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 	}
 
 	az := &AlzLib{
-		Archetypes:              make(map[string]*Archetype),
-		PolicyAssignments:       make(map[string]*armpolicy.Assignment),
-		PolicyDefinitions:       make(map[string]*armpolicy.Definition),
-		PolicySetDefinitions:    make(map[string]*armpolicy.SetDefinition),
-		libArchetypeDefinitions: make([]*libArchetypeDefinition, 0),
+		Archetypes:           make(map[string]*Archetype),
+		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 	}
 
-	// Walk the embedded lib FS and process files
-	if err := fs.WalkDir(lib, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error walking directory %s: %s", path, err)
-		}
-		// Skip directories
-		if d.IsDir() {
-			return nil
-		}
-		i, _ := d.Info()
-		return az.processLibFile(path, i)
-	}); err != nil {
-		return nil, err
+	res := new(processor.Result)
+	pc := processor.NewProcessorClient(lib)
+	if err := pc.Process(res); err != nil {
+		return nil, fmt.Errorf("error processing built-in library: %s", err)
 	}
 
-	// if err := az.generateArchetypes(); err != nil {
-	// 	return nil, fmt.Errorf("error generating archetypes: %s", err)
-	// }
+	// Put results into the AlzLib
 
-	// if err := az.generateManagementGroups(); err != nil {
-	// 	return nil, fmt.Errorf("error generating management groups: %s", err)
-	// }
+	// If we have a directory, process that too
+	if dir == "" {
+		return az, nil
+	}
+
+	localLib := os.DirFS(dir)
+	pc = processor.NewProcessorClient(localLib)
+	res = new(processor.Result)
+	if err := pc.Process(res); err != nil {
+		return nil, fmt.Errorf("error processing local library (%s): %s", dir, err)
+	}
+
+	// Put the results into the AlzLib
 
 	return az, nil
 }

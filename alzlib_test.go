@@ -13,7 +13,7 @@ func Test_NewAlzLib(t *testing.T) {
 	assert.Equal(t, len(az.PolicyAssignments), 35)
 	assert.Equal(t, len(az.PolicyDefinitions), 104)
 	assert.Equal(t, len(az.PolicySetDefinitions), 7)
-	assert.Equal(t, len(az.libArchetypeDefinitions), 12)
+	assert.Equal(t, len(az.Archetypes), 12)
 }
 
 // Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path
