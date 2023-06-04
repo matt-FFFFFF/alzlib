@@ -13,14 +13,6 @@ import (
 //go:embed lib
 var lib embed.FS
 
-// These are the file prefixes for the resource types
-const (
-	archetypeDefinitionPrefix = "archetype_definition_"
-	policyAssignmentPrefix    = "policy_assignment_"
-	policyDefinitionPrefix    = "policy_definition_"
-	policySetDefinitionPrefix = "policy_set_definition_"
-)
-
 // AlzLib is the structure that gets built from the the library files
 // do not create this directly, use NewAlzLib instead.
 type AlzLib struct {
@@ -29,6 +21,8 @@ type AlzLib struct {
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
+	AllowOverwrite       bool
+	libdir               string
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
@@ -37,6 +31,7 @@ type Archetype struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
+	RoleDefinitions      map[string]*armauthorization.RoleDefinition
 	//RoleAssignments      map[string]*armauthorization.RoleAssignment
 }
 
@@ -52,7 +47,8 @@ type AlzManagementGroup struct {
 	parent               *AlzManagementGroup
 }
 
-// NewAlzLib returns a new instance of the alzlib library using the supplied directory
+// NewAlzLib returns a new instance of the alzlib library, optionally using the supplied directory
+// for additional policy (set) definitions.
 func NewAlzLib(dir string) (*AlzLib, error) {
 	if dir != "" {
 		if err := checkDirExists(dir); err != nil {
@@ -65,31 +61,108 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		AllowOverwrite:       false,
+		libdir:               dir,
 	}
+	return az, nil
+}
 
+// Init processes the built-in library and optionally the local library
+// It populates the struct with the results of the processing
+func (az *AlzLib) Init() error {
 	res := new(processor.Result)
 	pc := processor.NewProcessorClient(lib)
 	if err := pc.Process(res); err != nil {
-		return nil, fmt.Errorf("error processing built-in library: %s", err)
+		return fmt.Errorf("error processing built-in library: %s", err)
 	}
 
 	// Put results into the AlzLib
-
-	// If we have a directory, process that too
-	if dir == "" {
-		return az, nil
+	if err := az.addProcessedResult(res); err != nil {
+		return err
+	}
+	if err := az.generateArchetypes(res); err != nil {
+		return err
 	}
 
-	localLib := os.DirFS(dir)
+	// If we have a directory, process that too
+	if az.libdir == "" {
+		return nil
+	}
+
+	localLib := os.DirFS(az.libdir)
 	pc = processor.NewProcessorClient(localLib)
 	res = new(processor.Result)
 	if err := pc.Process(res); err != nil {
-		return nil, fmt.Errorf("error processing local library (%s): %s", dir, err)
+		return fmt.Errorf("error processing local library (%s): %s", az.libdir, err)
 	}
-
+	res.PolicyAssignments = nil
+	res.LibArchetypes = nil
 	// Put the results into the AlzLib
+	az.addProcessedResult(res)
 
-	return az, nil
+	return nil
+}
+
+// addProcessedResult adds the results of a processed library to the AlzLib
+func (az *AlzLib) addProcessedResult(res *processor.Result) error {
+	for k, v := range res.PolicyDefinitions {
+		if _, exists := az.PolicyDefinitions[k]; exists && !az.AllowOverwrite {
+			return fmt.Errorf("policy definition %s already exists in the library", k)
+		}
+		az.PolicyDefinitions[k] = v
+	}
+	for k, v := range res.PolicySetDefinitions {
+		if _, exists := az.PolicySetDefinitions[k]; exists && !az.AllowOverwrite {
+			return fmt.Errorf("policy definition %s already exists in the library", k)
+		}
+		az.PolicySetDefinitions[k] = v
+	}
+	for k, v := range res.PolicyAssignments {
+		if _, exists := az.PolicyAssignments[k]; exists && !az.AllowOverwrite {
+			return fmt.Errorf("policy assignment %s already exists in the library", k)
+		}
+		az.PolicyAssignments[k] = v
+	}
+	for k, v := range res.RoleDefinitions {
+		if _, exists := az.RoleDefinitions[k]; exists && !az.AllowOverwrite {
+			return fmt.Errorf("role definition %s already exists in the library", k)
+		}
+		az.RoleDefinitions[k] = v
+	}
+	return nil
+}
+
+func (az *AlzLib) generateArchetypes(res *processor.Result) error {
+	for k, v := range res.LibArchetypes {
+		if _, exists := az.Archetypes[k]; exists {
+			return fmt.Errorf("archetype %s already exists in the library", v.Name)
+		}
+		arch := &Archetype{
+			PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+			PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+			PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		}
+		for _, pd := range v.PolicyDefinitions {
+			if _, ok := az.PolicyDefinitions[pd]; !ok {
+				return fmt.Errorf("error processing archetype %s, policy definition %s does not exist in the library", k, pd)
+			}
+			arch.PolicyDefinitions[pd] = az.PolicyDefinitions[pd]
+		}
+		for _, psd := range v.PolicySetDefinitions {
+			if _, ok := az.PolicySetDefinitions[psd]; !ok {
+				return fmt.Errorf("error processing archetype %s, policy set definition %s does not exist in the library", k, psd)
+			}
+			arch.PolicySetDefinitions[psd] = az.PolicySetDefinitions[psd]
+		}
+		for _, pa := range v.PolicyAssignments {
+			if _, ok := az.PolicyAssignments[pa]; !ok {
+				return fmt.Errorf("error processing archetype %s, policy assignment %s does not exist in the library", k, pa)
+			}
+			arch.PolicyAssignments[pa] = az.PolicyAssignments[pa]
+		}
+		az.Archetypes[v.Name] = arch
+	}
+	return nil
 }
 
 // checkDirExists checks if the supplied directory exists and is a directory

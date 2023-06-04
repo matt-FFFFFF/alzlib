@@ -67,10 +67,6 @@ func (client *ProcessorClient) Process(res *Result) error {
 		if d.IsDir() {
 			return nil
 		}
-		// i, err := d.Info()
-		// if err != nil {
-		// 	return fmt.Errorf("error getting file info for %s: %s", path, err)
-		// }
 		file, err := client.fs.Open(path)
 		if err != nil {
 			return fmt.Errorf("error opening file %s: %s", path, err)
@@ -102,7 +98,7 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 
 	// if the file is an archetype definition
 	case strings.HasPrefix(n, archetypeDefinitionPrefix):
-		err = readAndProcessFile(res, file, processArchetypeDefinition)
+		err = readAndProcessFile(res, file, processArchetype)
 	}
 
 	// If there's an error, wrap it with the file path
@@ -112,12 +108,15 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 	return err
 }
 
-// processArchetypeDefinition is a processFunc that reads the archetype_definition
+// processArchetype is a processFunc that reads the archetype_definition
 // bytes, processes, then adds the created LibArchetypeDefinition to the AlzLib
-func processArchetypeDefinition(res *Result, data []byte) error {
+func processArchetype(res *Result, data []byte) error {
 	la := new(LibArchetype)
 	if err := json.Unmarshal(data, la); err != nil {
 		return fmt.Errorf("error processing archetype definition: %s", err)
+	}
+	if _, exists := res.LibArchetypes[la.Name]; exists {
+		return fmt.Errorf("archetype with name %s already exists", la.Name)
 	}
 	res.LibArchetypes[la.Name] = la
 	return nil
@@ -133,6 +132,9 @@ func processPolicyAssignment(res *Result, data []byte) error {
 	if pa.Name == nil || *pa.Name == "" {
 		return fmt.Errorf("policy assignment name is empty or not present")
 	}
+	if _, exists := res.PolicyAssignments[*pa.Name]; exists {
+		return fmt.Errorf("policy assignment with name %s already exists", *pa.Name)
+	}
 	res.PolicyAssignments[*pa.Name] = pa
 	return nil
 }
@@ -146,6 +148,9 @@ func processPolicyDefinition(res *Result, data []byte) error {
 	}
 	if pd.Name == nil || *pd.Name == "" {
 		return fmt.Errorf("policy definition name is empty or not present")
+	}
+	if _, exists := res.PolicyDefinitions[*pd.Name]; exists {
+		return fmt.Errorf("policy definition with name %s already exists", *pd.Name)
 	}
 	res.PolicyDefinitions[*pd.Name] = pd
 	return nil
@@ -161,19 +166,15 @@ func processPolicySetDefinition(res *Result, data []byte) error {
 	if psd.Name == nil || *psd.Name == "" {
 		return fmt.Errorf("policy set definition name is empty or not present")
 	}
+	if _, exists := res.PolicySetDefinitions[*psd.Name]; exists {
+		return fmt.Errorf("policy set definition with name %s already exists", *psd.Name)
+	}
 	res.PolicySetDefinitions[*psd.Name] = psd
 	return nil
 }
 
 // readAndProcessFile reads the file bytes at the supplied path and processes it using the supplied processFunc
 func readAndProcessFile(res *Result, file fs.File, processFn processFunc) error {
-	// open the file and read the contents
-	// f, err := os.Open(path)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer f.Close()
-
 	s, err := file.Stat()
 	if err != nil {
 		return err

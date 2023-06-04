@@ -29,7 +29,7 @@ func TestProcessArchetypeDefinitionValid(t *testing.T) {
 		LibArchetypes: make(map[string]*LibArchetype, 0),
 	}
 
-	assert.NoError(t, processArchetypeDefinition(res, sampleData))
+	assert.NoError(t, processArchetype(res, sampleData))
 	assert.Equal(t, len(res.LibArchetypes), 1)
 	assert.Equal(t, len(res.LibArchetypes["test"].PolicyAssignments), 1)
 	assert.Equal(t, len(res.LibArchetypes["test"].PolicyDefinitions), 1)
@@ -44,7 +44,7 @@ func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
 		LibArchetypes: make(map[string]*LibArchetype, 0),
 	}
 
-	assert.ErrorContains(t, processArchetypeDefinition(res, sampleData), "invalid character '[' after object key")
+	assert.ErrorContains(t, processArchetype(res, sampleData), "invalid character '[' after object key")
 }
 
 // TestProcessPolicyAssignmentValid tests the processing of a valid policy assignment
