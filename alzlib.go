@@ -1,13 +1,21 @@
 package alzlib
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/matt-FFFFFF/alzlib/processor"
+	"golang.org/x/sync/errgroup"
+)
+
+const (
+	defaultParallelism = 10
 )
 
 //go:embed lib
@@ -16,13 +24,20 @@ var lib embed.FS
 // AlzLib is the structure that gets built from the the library files
 // do not create this directly, use NewAlzLib instead.
 type AlzLib struct {
+	AllowOverwrite       bool
 	Archetypes           map[string]*Archetype
+	ClientOptions        *AlzLibClientOptions
+	PolicyAssignments    map[string]*armpolicy.Assignment
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
-	PolicyAssignments    map[string]*armpolicy.Assignment
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	AllowOverwrite       bool
-	libdir               string
+
+	libdir string
+	mu     sync.RWMutex
+}
+
+type AlzLibClientOptions struct {
+	Parallelism int
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
@@ -32,6 +47,7 @@ type Archetype struct {
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
+
 	//RoleAssignments      map[string]*armauthorization.RoleAssignment
 }
 
@@ -57,11 +73,12 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 	}
 
 	az := &AlzLib{
+		AllowOverwrite:       false,
+		ClientOptions:        &AlzLibClientOptions{Parallelism: defaultParallelism},
 		Archetypes:           make(map[string]*Archetype),
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
-		AllowOverwrite:       false,
 		libdir:               dir,
 	}
 	return az, nil
@@ -95,8 +112,8 @@ func (az *AlzLib) Init() error {
 	if err := pc.Process(res); err != nil {
 		return fmt.Errorf("error processing local library (%s): %s", az.libdir, err)
 	}
-	res.PolicyAssignments = nil
-	res.LibArchetypes = nil
+	res.PolicyAssignments = make(map[string]*armpolicy.Assignment, 0)
+	res.LibArchetypes = make(map[string]*processor.LibArchetype, 0)
 	// Put the results into the AlzLib
 	if err := az.addProcessedResult(res); err != nil {
 		return err
@@ -105,8 +122,76 @@ func (az *AlzLib) Init() error {
 	return nil
 }
 
-func (az *AlzLib) GetBuiltInPolicies(client armpolicy.ClientFactory) error {
-	pdc := client.NewDefinitionsClient()
+func (az *AlzLib) GetBuiltInPolicies(ctx context.Context, client armpolicy.ClientFactory, names []string) error {
+	grp, ctx := errgroup.WithContext(ctx)
+	grp.SetLimit(az.ClientOptions.Parallelism)
+	pdclient := client.NewDefinitionsClient()
+	for _, name := range names {
+		name := name
+		if _, exists := az.PolicyDefinitions[name]; exists {
+			continue
+		}
+		grp.Go(func() error {
+			resp, err := pdclient.Get(ctx, name, nil)
+			if err != nil {
+				return err
+			}
+			az.mu.Lock()
+			defer az.mu.Unlock()
+			az.PolicyDefinitions[name] = &resp.Definition
+			return nil
+		})
+	}
+	if err := grp.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, client armpolicy.ClientFactory, names []string) error {
+	grp, ctx := errgroup.WithContext(ctx)
+	grp.SetLimit(az.ClientOptions.Parallelism)
+
+	processedNames := make([]string, 0, len(names))
+	mu := sync.Mutex{}
+
+	psclient := client.NewSetDefinitionsClient()
+	for _, name := range names {
+		name := name
+		if _, exists := az.PolicySetDefinitions[name]; exists {
+			continue
+		}
+		grp.Go(func() error {
+			resp, err := psclient.Get(ctx, name, nil)
+			if err != nil {
+				return err
+			}
+			// Add set definition to the AlzLib
+			az.mu.Lock()
+			defer az.mu.Unlock()
+			az.PolicySetDefinitions[name] = &resp.SetDefinition
+			// Add name to processedNames
+			mu.Lock()
+			defer mu.Unlock()
+			processedNames = append(processedNames, name)
+			return nil
+		})
+	}
+	if err := grp.Wait(); err != nil {
+		return err
+	}
+
+	// Get the policy definitions for newly added policy set definitions
+	defnames := make([]string, 0)
+	for _, name := range names {
+		name := name
+		for _, ref := range az.PolicySetDefinitions[name].Properties.PolicyDefinitions {
+			defnames = append(defnames, lastSegment(*ref.PolicyDefinitionID))
+		}
+	}
+	if err := az.GetBuiltInPolicies(ctx, client, defnames); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -187,4 +272,14 @@ func checkDirExists(dir string) error {
 		return fmt.Errorf("%s is not a directory and it should be", dir)
 	}
 	return nil
+}
+
+func lastSegment(s string) string {
+	parts := strings.Split(s, "/")
+	return parts[len(parts)-1]
+}
+
+func lastButOneSegment(s string) string {
+	parts := strings.Split(s, "/")
+	return parts[len(parts)-2]
 }
