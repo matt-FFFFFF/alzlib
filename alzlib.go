@@ -166,16 +166,16 @@ func (az *AlzLib) GetBuiltInPolicies(ctx context.Context, names []string) error 
 	pdclient := az.clients.policyClient.NewDefinitionsClient()
 	for _, name := range names {
 		name := name
-		if _, exists := az.PolicyDefinitions[name]; exists {
-			continue
-		}
 		grp.Go(func() error {
+			az.mu.Lock()
+			defer az.mu.Unlock()
+			if _, exists := az.PolicyDefinitions[name]; exists {
+				return nil
+			}
 			resp, err := pdclient.GetBuiltIn(ctx, name, nil)
 			if err != nil {
 				return err
 			}
-			az.mu.Lock()
-			defer az.mu.Unlock()
 			az.PolicyDefinitions[name] = &resp.Definition
 			return nil
 		})
@@ -195,23 +195,25 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 	grp, ctxErrGroup := errgroup.WithContext(ctx)
 	grp.SetLimit(az.Options.Parallelism)
 
+	// We need to keep track of the names we've processed
+	// so that we can get the policy definitions referenced within them
 	processedNames := make([]string, 0, len(names))
-	mu := sync.Mutex{}
+	var mu sync.Mutex
 
 	psclient := az.clients.policyClient.NewSetDefinitionsClient()
 	for _, name := range names {
 		name := name
-		if _, exists := az.PolicySetDefinitions[name]; exists {
-			continue
-		}
 		grp.Go(func() error {
+			az.mu.Lock()
+			defer az.mu.Unlock()
+			if _, exists := az.PolicySetDefinitions[name]; exists {
+				return nil
+			}
 			resp, err := psclient.GetBuiltIn(ctxErrGroup, name, nil)
 			if err != nil {
 				return err
 			}
 			// Add set definition to the AlzLib
-			az.mu.Lock()
-			defer az.mu.Unlock()
 			az.PolicySetDefinitions[name] = &resp.SetDefinition
 			// Add name to processedNames
 			mu.Lock()

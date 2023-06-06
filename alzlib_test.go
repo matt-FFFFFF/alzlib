@@ -5,6 +5,7 @@ package alzlib
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -12,14 +13,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test_NewAlzLib tests the valid creation of a new AlzLib from a valid source directory
-func Test_NewAlzLib(t *testing.T) {
+// ExampleAlzLib_Init demonstrates the creation of a new AlzLib based on the embedded data set
+// it requires authentication to Azure to retrieve the built-in policies.
+func ExampleAlzLib_Init() {
 	az, err := NewAlzLib("")
+	if err != nil {
+		fmt.Println(err)
+	}
 	cred, _ := azidentity.NewDefaultAzureCredential(nil)
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
-	assert.NoError(t, err)
-	assert.NoError(t, az.Init(context.Background()))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err = az.Init(ctx)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("Archetype count: %d\n", len(az.Archetypes))
+	// Output:
+	// Archetype count: 10
 }
 
 // Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path
