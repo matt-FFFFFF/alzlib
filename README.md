@@ -15,16 +15,27 @@ package main
 
 import (
   "fmt"
+  "context"
   "log"
 
   "github.com/matt-FFFFFF/alzlib"
+  "github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+  "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
 func main() {
   lib, err := alzlib.New("")
-  if err := lib.Init(); err != nil {
+
+  // Set up Azure clients
+  cred, _ := azidentity.NewDefaultAzureCredential(nil)
+  cf, _ := armpolicy.NewClientFactory("", cred, nil)
+  az.AddPolicyClient(cf)
+
+  // Initialize the library, and fetch required data from Azure
+  if err := lib.Init(context.TODO()); err != nil {
     log.Fatal(err)
   }
+
   fmt.Printf("Found %d archetypes!", len(lib.Archetypes))
 }
 ```
