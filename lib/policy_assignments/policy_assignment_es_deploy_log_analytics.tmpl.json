@@ -19,10 +19,10 @@
     ],
     "parameters": {
       "workspaceName": {
-        "value": "${root_scope_id}-la"
+        "value": "log-alz"
       },
       "automationAccountName": {
-        "value": "${root_scope_id}-automation"
+        "value": "aa-alz"
       },
       "workspaceRegion": {
         "value": "${default_location}"
@@ -31,7 +31,7 @@
         "value": "${default_location}"
       },
       "rgName": {
-        "value": "${root_scope_id}-mgmt"
+        "value": "rg-alzmgmt"
       },
       "dataRetention": {
         "value": "30"

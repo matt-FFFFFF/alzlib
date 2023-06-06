@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 // Package alzlib provides the data structures needed to deploy Azure Landing Zones.
 // It contains the custom Azure policies and policy sets needed to deploy the
 // reference architecture.

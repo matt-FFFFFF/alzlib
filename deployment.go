@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 package alzlib
 
 import (
@@ -16,6 +19,10 @@ const (
 	policySetDefinitionIdFmt = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policySetDefinitions/%s"
 )
 
+var (
+// WellKnownPolicyAssignmentParameterValues = getWellKnownPolicyAssignmentParameterValues()
+)
+
 // Deployment represents a deployment of Azure management group
 type Deployment struct {
 	MGs     map[string]*AlzManagementGroup
@@ -27,6 +34,8 @@ type DeploymentOptions struct {
 	DefaultLocation                string
 	DefaultLogAnalyticsWorkspaceId string
 }
+
+type PolicyAssignmentsParameterValues map[string]map[string]*armpolicy.ParameterValuesValue
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
@@ -43,10 +52,15 @@ type AlzManagementGroup struct {
 func NewDeployment(opts *DeploymentOptions) *Deployment {
 	d := new(Deployment)
 	d.options = opts
+
 	d.MGs = make(map[string]*AlzManagementGroup)
 	return d
 }
 
+// AddManagementGroup adds a management group to the deployment, with a parent if specified.
+// If the parent is not specified, the management group is considered the root of the hierarchy.
+// Consider passing the source Archetype through the .WithWellKnownPolicyParameters() method
+// to ensure that the values in the DeploymentOptions are honored.
 func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -64,6 +78,14 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 		}
 		alzmg.parent = d.MGs[parent]
 		alzmg.parent.children = append(alzmg.parent.children, alzmg)
+	}
+
+	if parent == "" {
+		for mgname, mg := range d.MGs {
+			if mg.parent == nil {
+				return fmt.Errorf("multiple root management groups: %s and %s", mgname, name)
+			}
+		}
 	}
 
 	// make copies of the archetype resources for modification in the Deployment management group
@@ -147,38 +169,84 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 }
 
 func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *DeploymentOptions) error {
-	for k, v := range alzmg.PolicyAssignments {
-		v.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, k))
-		v.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
-		if v.Location != nil {
-			v.Location = to.Ptr(opts.DefaultLocation)
+	for assignmentName, assignment := range alzmg.PolicyAssignments {
+		assignment.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, assignmentName))
+		assignment.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
+		if assignment.Location != nil {
+			assignment.Location = to.Ptr(opts.DefaultLocation)
 		}
 
 		// rewrite the referenced policy definition id
-		pd := v.Properties.PolicyDefinitionID
+		pd := assignment.Properties.PolicyDefinitionID
 		switch lastButOneSegment(*pd) {
 		case "policyDefinitions":
 			if mgname, ok := pd2mg[lastSegment(*pd)]; ok {
-				v.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, lastSegment(*pd)))
+				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, lastSegment(*pd)))
 			}
 		case "policySetDefinitions":
 			if mgname, ok := psd2mg[lastSegment(*pd)]; ok {
-				v.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, mgname, lastSegment(*pd)))
+				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, mgname, lastSegment(*pd)))
 			}
 		default:
-			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", k, *pd)
+			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", assignmentName, *pd)
 		}
 
 		// rewrite parameter values with well known values
-		if wkp, ok := opts.WellKnownParameterValues[k]; ok {
-			for wkpname, wkpval := range wkp {
-				param, ok := v.Properties.Parameters[wkpname]
-				if !ok {
-					return fmt.Errorf("policy assignment %s does not have well known parameter %s", k, wkpname)
-				}
-				param.Value = wkpval
-			}
-		}
+		// if wkp, ok := opts.WellKnownParameterValues[assignmentName]; ok {
+		// 	for wkpname, wkpval := range wkp {
+		// 		param, ok := assignment.Properties.Parameters[wkpname]
+		// 		if !ok {
+		// 			return fmt.Errorf("policy assignment %s does not have well known parameter %s", assignmentName, wkpname)
+		// 		}
+		// 		param.Value = wkpval
+		// 	}
+		// }
 	}
 	return nil
+}
+
+func getWellKnownPolicyAssignmentParameterValues(opts *DeploymentOptions) PolicyAssignmentsParameterValues {
+	return PolicyAssignmentsParameterValues{
+		"Deploy-AzActivity-Log": {
+			"logAnalytics": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+		},
+		"Deploy-AzSqlDb-Auditing": {
+			"logAnalyticsWorkspaceId": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+		},
+		"Deploy-Log-Analytics": {
+			"workspaceRegion": {
+				Value: opts.DefaultLocation,
+			},
+			"automationRegion": {
+				Value: opts.DefaultLocation,
+			},
+		},
+		"Deploy-MDFC-Config": {
+			"logAnalytics": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+			"ascExportResourceGroupLocation": {
+				Value: opts.DefaultLocation,
+			},
+		},
+		"Deploy-Resource-Diag": {
+			"logAnalytics": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+		},
+		"Deploy-VM-Monitoring": {
+			"logAnalytics_1": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+		},
+		"Deploy-VMSS-Monitoring": {
+			"logAnalytics_1": {
+				Value: opts.DefaultLogAnalyticsWorkspaceId,
+			},
+		},
+	}
 }

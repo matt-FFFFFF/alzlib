@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 package alzlib
 
 import (
@@ -298,6 +301,31 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 		az.Archetypes[v.Name] = arch
 	}
 	return nil
+}
+
+// WithWellKnownPolicyParameters adds the well known policy parameters to the archetype
+// ready for the caller to further customize, before sending back as a parameter to
+// the Deployment.AddManagementGroup method
+func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *Archetype {
+	result := new(Archetype)
+	*result = *arch
+	wk := getWellKnownPolicyAssignmentParameterValues(opts)
+	for asignmentName, params := range wk {
+		pa, ok := result.PolicyAssignments[asignmentName]
+		if !ok {
+			continue
+		}
+		if pa.Properties.Parameters == nil {
+			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 0)
+		}
+		for param, value := range params {
+			pa.Properties.Parameters[param] = &armpolicy.ParameterValuesValue{
+				Value: &value,
+			}
+		}
+	}
+
+	return result
 }
 
 // checkDirExists checks if the supplied directory exists and is a directory
