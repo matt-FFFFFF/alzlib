@@ -24,11 +24,9 @@ type Deployment struct {
 }
 
 type DeploymentOptions struct {
-	DefaultLocation          string
-	WellKnownParameterValues WellKnownPolicyAssignmentParameters
+	DefaultLocation                string
+	DefaultLogAnalyticsWorkspaceId string
 }
-
-type WellKnownPolicyAssignmentParameters map[string]map[string]any
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
@@ -151,6 +149,12 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *DeploymentOptions) error {
 	for k, v := range alzmg.PolicyAssignments {
 		v.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, k))
+		v.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
+		if v.Location != nil {
+			v.Location = to.Ptr(opts.DefaultLocation)
+		}
+
+		// rewrite the referenced policy definition id
 		pd := v.Properties.PolicyDefinitionID
 		switch lastButOneSegment(*pd) {
 		case "policyDefinitions":
@@ -164,10 +168,17 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		default:
 			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", k, *pd)
 		}
-		if v.Location != nil {
-			v.Location = to.Ptr(opts.DefaultLocation)
+
+		// rewrite parameter values with well known values
+		if wkp, ok := opts.WellKnownParameterValues[k]; ok {
+			for wkpname, wkpval := range wkp {
+				param, ok := v.Properties.Parameters[wkpname]
+				if !ok {
+					return fmt.Errorf("policy assignment %s does not have well known parameter %s", k, wkpname)
+				}
+				param.Value = wkpval
+			}
 		}
-		v.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
 	}
 	return nil
 }
