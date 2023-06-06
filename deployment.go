@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	policyAssignmentIdFmt    = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policyAssignments/%s"
 	policyDefinitionIdFmt    = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policyDefinitions/%s"
 	policySetDefinitionIdFmt = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policySetDefinitions/%s"
 )
@@ -86,12 +87,17 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	}
 
 	pd2mg := d.policyDefinitionToMg()
+	pds2mg := d.policySetDefinitionToMg()
 	// re-write the policy definition ID property to be the current MG name
 	modifyPolicyDefinitions(alzmg)
 	// re-write the policy set definition ID property and go through the referenced definitions
 	// and write the defintion id if it's custom
 	modifyPolicySetDefinitions(alzmg, pd2mg)
 
+	// re-write the policy assignment ID property to be the current MG name
+	// and go through the referenced definitions and write the defintion id if it's custom
+	// and set the location property to the default location if it's not nil
+	modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options)
 	return nil
 }
 
@@ -100,6 +106,16 @@ func (d *Deployment) policyDefinitionToMg() map[string]string {
 	for mgname, mg := range d.MGs {
 		for pdname := range mg.PolicyDefinitions {
 			res[pdname] = mgname
+		}
+	}
+	return res
+}
+
+func (d *Deployment) policySetDefinitionToMg() map[string]string {
+	res := make(map[string]string, 0)
+	for mgname, mg := range d.MGs {
+		for psdname := range mg.PolicySetDefinitions {
+			res[psdname] = mgname
 		}
 	}
 	return res
@@ -126,4 +142,27 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 			}
 		}
 	}
+}
+
+func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *DeploymentOptions) error {
+	for k, v := range alzmg.PolicyAssignments {
+		v.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, k))
+		pd := v.Properties.PolicyDefinitionID
+		switch lastButOneSegment(*pd) {
+		case "policyDefinitions":
+			if mgname, ok := pd2mg[lastSegment(*pd)]; ok {
+				v.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, lastSegment(*pd)))
+			}
+		case "policySetDefinitions":
+			if mgname, ok := psd2mg[lastSegment(*pd)]; ok {
+				v.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, mgname, lastSegment(*pd)))
+			}
+		default:
+			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", k, *pd)
+		}
+		if v.Location != nil {
+			v.Location = to.Ptr(opts.DefaultLocation)
+		}
+	}
+	return nil
 }
