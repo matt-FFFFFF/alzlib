@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	managementGroupIdFmt     = "/providers/Microsoft.Management/managementGroups/%s"
 	policyAssignmentIdFmt    = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policyAssignments/%s"
 	policyDefinitionIdFmt    = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policyDefinitions/%s"
 	policySetDefinitionIdFmt = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/policySetDefinitions/%s"
@@ -23,8 +24,11 @@ type Deployment struct {
 }
 
 type DeploymentOptions struct {
-	DefaultLocation string
+	DefaultLocation          string
+	WellKnownParameterValues WellKnownPolicyAssignmentParameters
 }
+
+type WellKnownPolicyAssignmentParameters map[string]map[string]any
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
@@ -163,6 +167,7 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		if v.Location != nil {
 			v.Location = to.Ptr(opts.DefaultLocation)
 		}
+		v.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
 	}
 	return nil
 }
