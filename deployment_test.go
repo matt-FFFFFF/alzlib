@@ -27,7 +27,7 @@ func TestNewDeploymentE2E(t *testing.T) {
 	dopts := new(DeploymentOptions)
 	dopts.DefaultLocation = "uksouth"
 	dopts.DefaultLogAnalyticsWorkspaceId = "testlaworkspace"
-	dep := NewDeployment(dopts)
+	dep := az.NewDeployment(dopts)
 	rootArch := az.Archetypes["root"].WithWellKnownPolicyParameters(dep.options)
 	dep.AddManagementGroup("myroot", "root management group", "", rootArch)
 	assert.Equal(t, "testlaworkspace", dep.MGs["myroot"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value)

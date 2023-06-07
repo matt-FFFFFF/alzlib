@@ -21,6 +21,7 @@ func TestE2E(t *testing.T) {
 	assert.Len(t, res.PolicyAssignments, 49)
 	assert.Len(t, res.PolicyDefinitions, 114)
 	assert.Len(t, res.PolicySetDefinitions, 12)
+	assert.Len(t, res.RoleDefinitions, 5)
 }
 
 // TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition

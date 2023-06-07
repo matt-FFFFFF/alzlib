@@ -37,6 +37,7 @@ type AlzLib struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
+	Depl                 *Deployment
 
 	libdir  string
 	clients *azureClients
@@ -79,6 +80,7 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 		libdir:               dir,
 		clients:              new(azureClients),
 	}

@@ -44,16 +44,18 @@ type AlzManagementGroup struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	PolicyAssignments    map[string]*armpolicy.Assignment
+	RoleDefinitions      map[string]*armauthorization.RoleDefinition
 	RoleAssignments      map[string]*armauthorization.RoleAssignment
 	children             []*AlzManagementGroup
 	parent               *AlzManagementGroup
 }
 
-func NewDeployment(opts *DeploymentOptions) *Deployment {
+func (az *AlzLib) NewDeployment(opts *DeploymentOptions) *Deployment {
 	d := new(Deployment)
 	d.options = opts
 
 	d.MGs = make(map[string]*AlzManagementGroup)
+	az.Depl = d
 	return d
 }
 
@@ -104,6 +106,11 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 		*newpolassign = *polassign
 		alzmg.PolicyAssignments[name] = newpolassign
 	}
+	for name, roledef := range arch.RoleDefinitions {
+		newroledef := new(armauthorization.RoleDefinition)
+		*newroledef = *roledef
+		alzmg.RoleDefinitions[name] = newroledef
+	}
 	for name, roleassign := range arch.RoleAssignments {
 		newroleassign := new(armauthorization.RoleAssignment)
 		*newroleassign = *roleassign
@@ -123,6 +130,10 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	// and go through the referenced definitions and write the defintion id if it's custom
 	// and set the location property to the default location if it's not nil
 	modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options)
+
+	// re-write the assignableScopes for the role definitions
+	modifyRoleDefinitions(alzmg)
+
 	d.MGs[name] = alzmg
 	return nil
 }
@@ -207,11 +218,21 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 	return nil
 }
 
+func modifyRoleDefinitions(alzmg *AlzManagementGroup) {
+	for _, roledef := range alzmg.RoleDefinitions {
+		if roledef.Properties.AssignableScopes == nil || len(roledef.Properties.AssignableScopes) == 0 {
+			roledef.Properties.AssignableScopes = make([]*string, 1)
+		}
+		roledef.Properties.AssignableScopes[0] = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
+	}
+}
+
 func newAlzManagementGroup() *AlzManagementGroup {
 	return &AlzManagementGroup{
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		RoleAssignments:      make(map[string]*armauthorization.RoleAssignment),
+		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 	}
 }

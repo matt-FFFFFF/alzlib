@@ -60,6 +60,7 @@ func (client *ProcessorClient) Process(res *Result) error {
 	res.PolicyAssignments = make(map[string]*armpolicy.Assignment)
 	res.PolicyDefinitions = make(map[string]*armpolicy.Definition)
 	res.PolicySetDefinitions = make(map[string]*armpolicy.SetDefinition)
+	res.RoleDefinitions = make(map[string]*armauthorization.RoleDefinition)
 
 	// Walk the embedded lib FS and process files
 	if err := fs.WalkDir(client.fs, ".", func(path string, d fs.DirEntry, err error) error {
@@ -102,6 +103,9 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 	// if the file is an archetype definition
 	case strings.HasPrefix(n, archetypeDefinitionPrefix):
 		err = readAndProcessFile(res, file, processArchetype)
+
+	case strings.HasPrefix(n, roleDefinitionPrefix):
+		err = readAndProcessFile(res, file, processRoleDefinition)
 	}
 
 	// If there's an error, wrap it with the file path
@@ -145,7 +149,7 @@ func processPolicyAssignment(res *Result, data []byte) error {
 // processPolicyAssignment is a processFunc that reads the policy_definition
 // bytes, processes, then adds the created armpolicy.Definition to the AlzLib
 func processPolicyDefinition(res *Result, data []byte) error {
-	pd := &armpolicy.Definition{}
+	pd := new(armpolicy.Definition)
 	if err := json.Unmarshal(data, pd); err != nil {
 		return fmt.Errorf("error unmarshalling policy definition: %s", err)
 	}
@@ -162,7 +166,7 @@ func processPolicyDefinition(res *Result, data []byte) error {
 // processPolicyAssignment is a processFunc that reads the policy_set_definition
 // bytes, processes, then adds the created armpolicy.SetDefinition to the AlzLib
 func processPolicySetDefinition(res *Result, data []byte) error {
-	psd := &armpolicy.SetDefinition{}
+	psd := new(armpolicy.SetDefinition)
 	if err := json.Unmarshal(data, psd); err != nil {
 		return fmt.Errorf("error unmarshalling policy set definition: %s", err)
 	}
@@ -173,6 +177,21 @@ func processPolicySetDefinition(res *Result, data []byte) error {
 		return fmt.Errorf("policy set definition with name %s already exists", *psd.Name)
 	}
 	res.PolicySetDefinitions[*psd.Name] = psd
+	return nil
+}
+
+func processRoleDefinition(res *Result, data []byte) error {
+	rd := new(armauthorization.RoleDefinition)
+	if err := json.Unmarshal(data, rd); err != nil {
+		return fmt.Errorf("error unmarshalling role definition: %s", err)
+	}
+	if rd.Name == nil || *rd.Name == "" {
+		return fmt.Errorf("policy set definition name is empty or not present")
+	}
+	if _, exists := res.PolicySetDefinitions[*rd.Name]; exists {
+		return fmt.Errorf("policy set definition with name %s already exists", *rd.Name)
+	}
+	res.RoleDefinitions[*rd.Name] = rd
 	return nil
 }
 
