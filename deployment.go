@@ -67,8 +67,8 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	if _, exists := d.MGs[name]; exists {
 		return fmt.Errorf("management group %s already exists", name)
 	}
-	alzmg := new(AlzManagementGroup)
-	d.MGs[name] = alzmg
+	alzmg := newAlzManagementGroup()
+
 	alzmg.Name = name
 	alzmg.DisplayName = displayName
 	alzmg.children = make([]*AlzManagementGroup, 0)
@@ -114,6 +114,7 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	pds2mg := d.policySetDefinitionToMg()
 	// re-write the policy definition ID property to be the current MG name
 	modifyPolicyDefinitions(alzmg)
+
 	// re-write the policy set definition ID property and go through the referenced definitions
 	// and write the defintion id if it's custom
 	modifyPolicySetDefinitions(alzmg, pd2mg)
@@ -122,6 +123,7 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	// and go through the referenced definitions and write the defintion id if it's custom
 	// and set the location property to the default location if it's not nil
 	modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options)
+	d.MGs[name] = alzmg
 	return nil
 }
 
@@ -203,4 +205,13 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		// }
 	}
 	return nil
+}
+
+func newAlzManagementGroup() *AlzManagementGroup {
+	return &AlzManagementGroup{
+		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+		RoleAssignments:      make(map[string]*armauthorization.RoleAssignment),
+	}
 }

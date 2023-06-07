@@ -321,9 +321,7 @@ func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *A
 			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 0)
 		}
 		for param, value := range params {
-			pa.Properties.Parameters[param] = &armpolicy.ParameterValuesValue{
-				Value: &value,
-			}
+			pa.Properties.Parameters[param] = value
 		}
 	}
 
