@@ -27,7 +27,9 @@ func ExampleAlzLib_NewDeployment() {
 	dopts.DefaultLogAnalyticsWorkspaceId = "testlaworkspace"
 	dep := az.NewDeployment(dopts)
 	rootArch := az.Archetypes["root"].WithWellKnownPolicyParameters(dep.options)
-	dep.AddManagementGroup("myroot", "root management group", "", rootArch)
+	if err := dep.AddManagementGroup("myroot", "root management group", "", rootArch); err != nil {
+		fmt.Println(err)
+	}
 	fmt.Printf("%s\n", dep.MGs["myroot"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value)
 	// Output:
 	// testlaworkspace

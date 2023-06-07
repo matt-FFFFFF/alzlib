@@ -129,7 +129,9 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	// re-write the policy assignment ID property to be the current MG name
 	// and go through the referenced definitions and write the defintion id if it's custom
 	// and set the location property to the default location if it's not nil
-	modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options)
+	if err := modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options); err != nil {
+		return err
+	}
 
 	// re-write the assignableScopes for the role definitions
 	modifyRoleDefinitions(alzmg)
