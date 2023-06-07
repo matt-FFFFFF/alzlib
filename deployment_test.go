@@ -3,14 +3,12 @@ package alzlib
 import (
 	"context"
 	"fmt"
-	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestNewDeploymentE2E(t *testing.T) {
+func ExampleAlzLib_NewDeployment() {
 	az, err := NewAlzLib("")
 	if err != nil {
 		fmt.Println(err)
@@ -30,5 +28,7 @@ func TestNewDeploymentE2E(t *testing.T) {
 	dep := az.NewDeployment(dopts)
 	rootArch := az.Archetypes["root"].WithWellKnownPolicyParameters(dep.options)
 	dep.AddManagementGroup("myroot", "root management group", "", rootArch)
-	assert.Equal(t, "testlaworkspace", dep.MGs["myroot"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value)
+	fmt.Printf("%s\n", dep.MGs["myroot"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value)
+	// Output:
+	// testlaworkspace
 }
