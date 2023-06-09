@@ -9,7 +9,7 @@ import (
 )
 
 func ExampleAlzLib_NewDeployment() {
-	az, err := NewAlzLib("")
+	az, err := NewAlzLib()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -18,7 +18,7 @@ func ExampleAlzLib_NewDeployment() {
 	az.AddPolicyClient(cf)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = az.Init(ctx)
+	err = az.Init(ctx, Lib)
 	if err != nil {
 		fmt.Println(err)
 	}

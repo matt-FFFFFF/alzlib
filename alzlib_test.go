@@ -6,6 +6,7 @@ package alzlib
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -16,7 +17,7 @@ import (
 // ExampleAlzLib_Init demonstrates the creation of a new AlzLib based on the embedded data set
 // it requires authentication to Azure to retrieve the built-in policies.
 func ExampleAlzLib_Init() {
-	az, err := NewAlzLib("")
+	az, err := NewAlzLib()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -25,7 +26,7 @@ func ExampleAlzLib_Init() {
 	az.AddPolicyClient(cf)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = az.Init(ctx)
+	err = az.Init(ctx, Lib)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -37,22 +38,28 @@ func ExampleAlzLib_Init() {
 // Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path
 // that does not exist.
 // The error details are checked for the expected error message.
-func Test_NewAlzLib_noDir(t *testing.T) {
-	_, err := NewAlzLib("./testdata/doesnotexist")
+func TestNewAlzLibWithNoDir(t *testing.T) {
+	az, _ := NewAlzLib()
+	dir := os.DirFS("./testdata/doesnotexist")
+	err := az.Init(context.Background(), dir)
+
 	assert.ErrorContains(t, err, "no such file or directory")
 }
 
 // Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
 // path that is not a directory.
 // The error details are checked for the expected error message.
-func Test_NewAlzLib_notADir(t *testing.T) {
-	_, err := NewAlzLib("./testdata/notadirectory")
-	assert.ErrorContains(t, err, "is not a directory and it should be")
+func TestNewAlzLibWithNotADir(t *testing.T) {
+	az, _ := NewAlzLib()
+	dir := os.DirFS("./testdata/notadirectory")
+	err := az.Init(context.Background(), dir)
+	assert.ErrorContains(t, err, "not a directory")
 }
 
 // Benchmark_NewAlzLib benchmarks the creation of a new AlzLib based on the embedded data set
 func Benchmark_NewAlzLib(b *testing.B) {
-	_, e := NewAlzLib("")
+	az, e := NewAlzLib()
+	az.Init(context.Background(), Lib)
 	if e != nil {
 		b.Error(e)
 	}
@@ -60,12 +67,14 @@ func Benchmark_NewAlzLib(b *testing.B) {
 
 // Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory
 func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
-	az, _ := NewAlzLib("./testdata/badlib-duplicatearchetypedef")
-	assert.ErrorContains(t, az.Init(context.Background()), "archetype with name duplicate already exists")
+	az, _ := NewAlzLib()
+	dir := os.DirFS("./testdata/badlib-duplicatearchetypedef")
+	err := az.Init(context.Background(), dir)
+	assert.ErrorContains(t, err, "archetype with name duplicate already exists")
 }
 
 func TestGetBuiltInPolicy(t *testing.T) {
-	az, _ := NewAlzLib("")
+	az, _ := NewAlzLib()
 	cred, _ := azidentity.NewDefaultAzureCredential(nil)
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
@@ -76,7 +85,7 @@ func TestGetBuiltInPolicy(t *testing.T) {
 }
 
 func TestGetBuiltInPolicySet(t *testing.T) {
-	az, _ := NewAlzLib("")
+	az, _ := NewAlzLib()
 	cred, _ := azidentity.NewDefaultAzureCredential(nil)
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)

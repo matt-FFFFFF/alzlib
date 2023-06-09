@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -22,10 +23,10 @@ const (
 	defaultParallelism = 10 // default number of parallel requests to make to Azure APIs
 )
 
-// Embed the lib dir into the binary
+// Embed the Lib dir into the binary
 //
 //go:embed lib
-var lib embed.FS
+var Lib embed.FS
 
 // AlzLib is the structure that gets built from the the library files
 // do not create this directly, use NewAlzLib instead.
@@ -38,10 +39,8 @@ type AlzLib struct {
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
 	Depl                 *Deployment
-
-	libdir  string
-	clients *azureClients
-	mu      sync.RWMutex
+	clients              *azureClients
+	mu                   sync.RWMutex
 }
 
 type azureClients struct {
@@ -66,13 +65,7 @@ type Archetype struct {
 
 // NewAlzLib returns a new instance of the alzlib library, optionally using the supplied directory
 // for additional policy (set) definitions.
-func NewAlzLib(dir string) (*AlzLib, error) {
-	if dir != "" {
-		if err := checkDirExists(dir); err != nil {
-			return nil, err
-		}
-	}
-
+func NewAlzLib() (*AlzLib, error) {
 	az := &AlzLib{
 		AllowOverwrite:       false,
 		Options:              &AlzLibOptions{Parallelism: defaultParallelism},
@@ -81,7 +74,6 @@ func NewAlzLib(dir string) (*AlzLib, error) {
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
-		libdir:               dir,
 		clients:              new(azureClients),
 	}
 	return az, nil
@@ -91,38 +83,34 @@ func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 	az.clients.policyClient = client
 }
 
-// Init processes the built-in library and optionally the local library
-// It populates the struct with the results of the processing
-func (az *AlzLib) Init(ctx context.Context) error {
-	res := new(processor.Result)
-	pc := processor.NewProcessorClient(lib)
-	if err := pc.Process(res); err != nil {
-		return fmt.Errorf("error processing built-in library: %s", err)
-	}
-
-	// Put results into the AlzLib
-	if err := az.addProcessedResult(res); err != nil {
-		return err
-	}
-	if err := az.generateArchetypes(res); err != nil {
-		return err
-	}
-
-	// If we have a directory, process that too
-	if az.libdir != "" {
-		localLib := os.DirFS(az.libdir)
-		pc = processor.NewProcessorClient(localLib)
-		res = new(processor.Result)
+// Init processes ALZ libraries, supplied as fs.FS interfaces.
+// These are typically the embed.FS var Lib, or an os.DirFS.
+// It populates the struct with the results of the processing.
+func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
+	// Process the libraries
+	for i, lib := range libs {
+		res := new(processor.Result)
+		pc := processor.NewProcessorClient(lib)
 		if err := pc.Process(res); err != nil {
-			return fmt.Errorf("error processing local library (%s): %s", az.libdir, err)
+			return fmt.Errorf("error processing library %v: %w", lib, err)
 		}
-		// We don't support assignments or custom archetypes in a local lib dir
-		// as these will be created through the provider data source
-		res.PolicyAssignments = make(map[string]*armpolicy.Assignment, 0)
-		res.LibArchetypes = make(map[string]*processor.LibArchetype, 0)
-		// Put the results into the AlzLib
+
+		// Only support definitions  (role, policy, policy set) in the first library
+		if i != 0 {
+			res.PolicyAssignments = make(map[string]*armpolicy.Assignment, 0)
+			res.LibArchetypes = make(map[string]*processor.LibArchetype, 0)
+		}
+
+		// Put results into the AlzLib
 		if err := az.addProcessedResult(res); err != nil {
 			return err
+		}
+
+		// Generate archetypes from the first library
+		if i == 0 {
+			if err := az.generateArchetypes(res); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -147,6 +135,8 @@ func (az *AlzLib) Init(ctx context.Context) error {
 		}
 	}
 
+	// Add the referenced built-in definitions and set definitions to the AlzLib struct
+	// so that we can use the data to determine the correct role assignments at scope.
 	if err := az.GetBuiltInPolicies(ctx, builtInDefs); err != nil {
 		return err
 	}

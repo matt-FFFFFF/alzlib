@@ -65,7 +65,7 @@ func (client *ProcessorClient) Process(res *Result) error {
 	// Walk the embedded lib FS and process files
 	if err := fs.WalkDir(client.fs, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("error walking directory %s: %s", path, err)
+			return fmt.Errorf("error walking directory %s: %w", path, err)
 		}
 		// Skip directories
 		if d.IsDir() {
@@ -73,11 +73,11 @@ func (client *ProcessorClient) Process(res *Result) error {
 		}
 		file, err := client.fs.Open(path)
 		if err != nil {
-			return fmt.Errorf("error opening file %s: %s", path, err)
+			return fmt.Errorf("error opening file %s: %w", path, err)
 		}
 		return classifyLibFile(res, file, d.Name())
 	}); err != nil {
-		return fmt.Errorf("error walking library files: %s", err)
+		return err
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 
 	// If there's an error, wrap it with the file path
 	if err != nil {
-		err = fmt.Errorf("error processing file: %s", err)
+		err = fmt.Errorf("error processing file: %w", err)
 	}
 	return err
 }
@@ -120,7 +120,7 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 func processArchetype(res *Result, data []byte) error {
 	la := new(LibArchetype)
 	if err := json.Unmarshal(data, la); err != nil {
-		return fmt.Errorf("error processing archetype definition: %s", err)
+		return fmt.Errorf("error processing archetype definition: %w", err)
 	}
 	if _, exists := res.LibArchetypes[la.Name]; exists {
 		return fmt.Errorf("archetype with name %s already exists", la.Name)
@@ -134,7 +134,7 @@ func processArchetype(res *Result, data []byte) error {
 func processPolicyAssignment(res *Result, data []byte) error {
 	pa := new(armpolicy.Assignment)
 	if err := json.Unmarshal(data, pa); err != nil {
-		return fmt.Errorf("error unmarshalling policy assignment: %s", err)
+		return fmt.Errorf("error unmarshalling policy assignment: %w", err)
 	}
 	if pa.Name == nil || *pa.Name == "" {
 		return fmt.Errorf("policy assignment name is empty or not present")
@@ -151,7 +151,7 @@ func processPolicyAssignment(res *Result, data []byte) error {
 func processPolicyDefinition(res *Result, data []byte) error {
 	pd := new(armpolicy.Definition)
 	if err := json.Unmarshal(data, pd); err != nil {
-		return fmt.Errorf("error unmarshalling policy definition: %s", err)
+		return fmt.Errorf("error unmarshalling policy definition: %w", err)
 	}
 	if pd.Name == nil || *pd.Name == "" {
 		return fmt.Errorf("policy definition name is empty or not present")
@@ -168,7 +168,7 @@ func processPolicyDefinition(res *Result, data []byte) error {
 func processPolicySetDefinition(res *Result, data []byte) error {
 	psd := new(armpolicy.SetDefinition)
 	if err := json.Unmarshal(data, psd); err != nil {
-		return fmt.Errorf("error unmarshalling policy set definition: %s", err)
+		return fmt.Errorf("error unmarshalling policy set definition: %w", err)
 	}
 	if psd.Name == nil || *psd.Name == "" {
 		return fmt.Errorf("policy set definition name is empty or not present")
@@ -183,7 +183,7 @@ func processPolicySetDefinition(res *Result, data []byte) error {
 func processRoleDefinition(res *Result, data []byte) error {
 	rd := new(armauthorization.RoleDefinition)
 	if err := json.Unmarshal(data, rd); err != nil {
-		return fmt.Errorf("error unmarshalling role definition: %s", err)
+		return fmt.Errorf("error unmarshalling role definition: %w", err)
 	}
 	if rd.Name == nil || *rd.Name == "" {
 		return fmt.Errorf("policy set definition name is empty or not present")
