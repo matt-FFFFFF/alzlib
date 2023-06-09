@@ -38,7 +38,7 @@ type AlzLib struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	Depl                 *Deployment
+	Deployment           *DeploymentType
 	clients              *azureClients
 	mu                   sync.RWMutex
 }
@@ -81,6 +81,13 @@ func NewAlzLib() (*AlzLib, error) {
 
 func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 	az.clients.policyClient = client
+}
+
+func (az *AlzLib) NewDeployment(do *DeploymentOptions) {
+	az.Deployment = &DeploymentType{
+		options: do,
+		MGs:     make(map[string]*AlzManagementGroup),
+	}
 }
 
 // Init processes ALZ libraries, supplied as fs.FS interfaces.
@@ -315,13 +322,13 @@ func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *A
 	result := new(Archetype)
 	*result = *arch
 	wk := getWellKnownPolicyAssignmentParameterValues(opts)
-	for asignmentName, params := range wk {
-		pa, ok := result.PolicyAssignments[asignmentName]
+	for assignmentName, params := range wk {
+		pa, ok := result.PolicyAssignments[assignmentName]
 		if !ok {
 			continue
 		}
 		if pa.Properties.Parameters == nil {
-			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 0)
+			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
 		}
 		for param, value := range params {
 			pa.Properties.Parameters[param] = value

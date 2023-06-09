@@ -4,6 +4,7 @@
 package alzlib
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -23,8 +24,8 @@ var (
 // WellKnownPolicyAssignmentParameterValues = getWellKnownPolicyAssignmentParameterValues()
 )
 
-// Deployment represents a deployment of Azure management group
-type Deployment struct {
+// DeploymentType represents a deployment of Azure management group
+type DeploymentType struct {
 	MGs     map[string]*AlzManagementGroup
 	options *DeploymentOptions
 	mu      sync.RWMutex
@@ -50,20 +51,14 @@ type AlzManagementGroup struct {
 	parent               *AlzManagementGroup
 }
 
-func (az *AlzLib) NewDeployment(opts *DeploymentOptions) *Deployment {
-	d := new(Deployment)
-	d.options = opts
-
-	d.MGs = make(map[string]*AlzManagementGroup)
-	az.Depl = d
-	return d
-}
-
 // AddManagementGroup adds a management group to the deployment, with a parent if specified.
 // If the parent is not specified, the management group is considered the root of the hierarchy.
 // Consider passing the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the DeploymentOptions are honored.
-func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
+func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
+	if d.options == nil {
+		return errors.New("deployment options not set, use .NewDeployment() to create a new deployment")
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if _, exists := d.MGs[name]; exists {
@@ -117,8 +112,11 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 		alzmg.RoleAssignments[name] = newroleassign
 	}
 
+	d.MGs[name] = alzmg
+
 	pd2mg := d.policyDefinitionToMg()
-	pds2mg := d.policySetDefinitionToMg()
+	psd2mg := d.policySetDefinitionToMg()
+
 	// re-write the policy definition ID property to be the current MG name
 	modifyPolicyDefinitions(alzmg)
 
@@ -127,20 +125,19 @@ func (d *Deployment) AddManagementGroup(name, displayName, parent string, arch *
 	modifyPolicySetDefinitions(alzmg, pd2mg)
 
 	// re-write the policy assignment ID property to be the current MG name
-	// and go through the referenced definitions and write the defintion id if it's custom
+	// and go through the referenced definitions and write the definition id if it's custom
 	// and set the location property to the default location if it's not nil
-	if err := modifyPolicyAssignments(alzmg, pd2mg, pds2mg, d.options); err != nil {
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, d.options); err != nil {
 		return err
 	}
 
 	// re-write the assignableScopes for the role definitions
 	modifyRoleDefinitions(alzmg)
 
-	d.MGs[name] = alzmg
 	return nil
 }
 
-func (d *Deployment) policyDefinitionToMg() map[string]string {
+func (d *DeploymentType) policyDefinitionToMg() map[string]string {
 	res := make(map[string]string, 0)
 	for mgname, mg := range d.MGs {
 		for pdname := range mg.PolicyDefinitions {
@@ -150,7 +147,7 @@ func (d *Deployment) policyDefinitionToMg() map[string]string {
 	return res
 }
 
-func (d *Deployment) policySetDefinitionToMg() map[string]string {
+func (d *DeploymentType) policySetDefinitionToMg() map[string]string {
 	res := make(map[string]string, 0)
 	for mgname, mg := range d.MGs {
 		for psdname := range mg.PolicySetDefinitions {
@@ -205,17 +202,6 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		default:
 			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", assignmentName, *pd)
 		}
-
-		// rewrite parameter values with well known values
-		// if wkp, ok := opts.WellKnownParameterValues[assignmentName]; ok {
-		// 	for wkpname, wkpval := range wkp {
-		// 		param, ok := assignment.Properties.Parameters[wkpname]
-		// 		if !ok {
-		// 			return fmt.Errorf("policy assignment %s does not have well known parameter %s", assignmentName, wkpname)
-		// 		}
-		// 		param.Value = wkpval
-		// 	}
-		// }
 	}
 	return nil
 }
