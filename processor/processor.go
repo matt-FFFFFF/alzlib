@@ -39,6 +39,7 @@ type LibArchetype struct {
 	PolicyAssignments    []string `json:"policy_assignments"`
 	PolicyDefinitions    []string `json:"policy_definitions"`
 	PolicySetDefinitions []string `json:"policy_set_definitions"`
+	RoleDefinitions      []string `json:"role_definitions"`
 }
 
 // processFunc is the function signature that is used to process different types of lib file
@@ -191,7 +192,8 @@ func processRoleDefinition(res *Result, data []byte) error {
 	if _, exists := res.PolicySetDefinitions[*rd.Name]; exists {
 		return fmt.Errorf("policy set definition with name %s already exists", *rd.Name)
 	}
-	res.RoleDefinitions[*rd.Name] = rd
+	// Use roleName here not the name, which is a GUID
+	res.RoleDefinitions[*rd.Properties.RoleName] = rd
 	return nil
 }
 

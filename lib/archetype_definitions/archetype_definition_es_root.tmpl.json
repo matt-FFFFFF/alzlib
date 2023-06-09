@@ -151,9 +151,5 @@
     "Network-Management",
     "Security-Operations",
     "Subscription-Owner"
-  ],
-  "archetype_config": {
-    "parameters": {},
-    "access_control": {}
-  }
+  ]
 }

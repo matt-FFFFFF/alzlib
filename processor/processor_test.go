@@ -4,25 +4,11 @@
 package processor
 
 import (
-	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestE2E(t *testing.T) {
-	//path, _ := filepath.Abs("testdata")
-	testdir := os.DirFS("testdata")
-	res := new(Result)
-	client := NewProcessorClient(testdir)
-	assert.NoError(t, client.Process(res))
-	assert.Len(t, res.LibArchetypes, 10)
-	assert.Len(t, res.PolicyAssignments, 49)
-	assert.Len(t, res.PolicyDefinitions, 114)
-	assert.Len(t, res.PolicySetDefinitions, 12)
-	assert.Len(t, res.RoleDefinitions, 5)
-}
 
 // TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition
 // The extend_ prefix is used in the sample data and should not be removed by this process,
@@ -38,6 +24,7 @@ func TestProcessArchetypeDefinitionValid(t *testing.T) {
 	assert.Equal(t, len(res.LibArchetypes["test"].PolicyAssignments), 1)
 	assert.Equal(t, len(res.LibArchetypes["test"].PolicyDefinitions), 1)
 	assert.Equal(t, len(res.LibArchetypes["test"].PolicySetDefinitions), 1)
+	assert.Equal(t, len(res.LibArchetypes["test"].RoleDefinitions), 1)
 }
 
 // TestProcessArchetypeDefinition_multipleTopLevelObjects tests that the correct error

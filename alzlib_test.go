@@ -14,25 +14,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ExampleAlzLib_Init demonstrates the creation of a new AlzLib based on the embedded data set
-// it requires authentication to Azure to retrieve the built-in policies.
+// ExampleAlzLib_Init demonstrates the creation of a new AlzLib based a sample directory
 func ExampleAlzLib_Init() {
 	az, err := NewAlzLib()
 	if err != nil {
 		fmt.Println(err)
 	}
-	cred, _ := azidentity.NewDefaultAzureCredential(nil)
-	cf, _ := armpolicy.NewClientFactory("", cred, nil)
-	az.AddPolicyClient(cf)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = az.Init(ctx, Lib)
+	dirfs := os.DirFS("./testdata/simple")
+	err = az.Init(ctx, dirfs)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("Archetype count: %d\n", len(az.Archetypes))
 	// Output:
-	// Archetype count: 10
+	// Archetype count: 1
 }
 
 // Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path

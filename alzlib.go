@@ -137,11 +137,15 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 
 	// Add the referenced built-in definitions and set definitions to the AlzLib struct
 	// so that we can use the data to determine the correct role assignments at scope.
-	if err := az.GetBuiltInPolicies(ctx, builtInDefs); err != nil {
-		return err
+	if len(builtInDefs) != 0 {
+		if err := az.GetBuiltInPolicies(ctx, builtInDefs); err != nil {
+			return err
+		}
 	}
-	if err := az.GetBuiltInPolicySets(ctx, builtInSetDefs); err != nil {
-		return err
+	if len(builtInSetDefs) != 0 {
+		if err := az.GetBuiltInPolicySets(ctx, builtInSetDefs); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -273,6 +277,7 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 			PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 			PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 			PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+			RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 		}
 		for _, pd := range v.PolicyDefinitions {
 			if _, ok := az.PolicyDefinitions[pd]; !ok {
@@ -291,6 +296,12 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 				return fmt.Errorf("error processing archetype %s, policy assignment %s does not exist in the library", k, pa)
 			}
 			arch.PolicyAssignments[pa] = az.PolicyAssignments[pa]
+		}
+		for _, rd := range v.RoleDefinitions {
+			if _, ok := az.RoleDefinitions[rd]; !ok {
+				return fmt.Errorf("error processing archetype %s, role definition %s does not exist in the library", k, rd)
+			}
+			arch.RoleDefinitions[rd] = az.RoleDefinitions[rd]
 		}
 		az.Archetypes[v.Name] = arch
 	}
