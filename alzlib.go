@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"strings"
 	"sync"
 
@@ -341,27 +340,13 @@ func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *A
 	return result
 }
 
-// checkDirExists checks if the supplied directory exists and is a directory
-func checkDirExists(dir string) error {
-	fs, err := os.Stat(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("the supplied lib directory does not exist: %s. %s", dir, err)
-	}
-	if err != nil {
-		return fmt.Errorf("error checking lib dir exists: %s. %s", dir, err)
-	}
-	// The error is nil, so let's check if it's actually a directory
-	if !fs.IsDir() {
-		return fmt.Errorf("%s is not a directory and it should be", dir)
-	}
-	return nil
-}
-
+// lastSegment returns the last segment of a string separated by "/"
 func lastSegment(s string) string {
 	parts := strings.Split(s, "/")
 	return parts[len(parts)-1]
 }
 
+// lastButOneSegment returns the last but one segment of a string separated by "/"
 func lastButOneSegment(s string) string {
 	parts := strings.Split(s, "/")
 	return parts[len(parts)-2]
