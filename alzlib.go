@@ -31,7 +31,6 @@ var Lib embed.FS
 // AlzLib is the structure that gets built from the the library files
 // do not create this directly, use NewAlzLib instead.
 type AlzLib struct {
-	AllowOverwrite       bool
 	Archetypes           map[string]*Archetype
 	Options              *AlzLibOptions
 	PolicyAssignments    map[string]*armpolicy.Assignment
@@ -50,12 +49,12 @@ type azureClients struct {
 // AlzLibOptions are options for the AlzLib.
 // This is created by NewAlzLib.
 type AlzLibOptions struct {
-	Parallelism int
+	AllowOverwrite bool
+	Parallelism    int
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
 type Archetype struct {
-	//AlzLib               *AlzLib
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
@@ -67,8 +66,10 @@ type Archetype struct {
 // for additional policy (set) definitions.
 func NewAlzLib() (*AlzLib, error) {
 	az := &AlzLib{
-		AllowOverwrite:       false,
-		Options:              &AlzLibOptions{Parallelism: defaultParallelism},
+		Options: &AlzLibOptions{
+			Parallelism:    defaultParallelism,
+			AllowOverwrite: false,
+		},
 		Archetypes:           make(map[string]*Archetype),
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
@@ -79,6 +80,8 @@ func NewAlzLib() (*AlzLib, error) {
 	return az, nil
 }
 
+// AddPolicyClient adds an authenticeted *armpolicy.ClientFactory to the AlzLib struct.
+// This is needed to get policy objects from Azure.
 func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 	az.clients.policyClient = client
 }
@@ -247,25 +250,25 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 // addProcessedResult adds the results of a processed library to the AlzLib
 func (az *AlzLib) addProcessedResult(res *processor.Result) error {
 	for k, v := range res.PolicyDefinitions {
-		if _, exists := az.PolicyDefinitions[k]; exists && !az.AllowOverwrite {
+		if _, exists := az.PolicyDefinitions[k]; exists && !az.Options.AllowOverwrite {
 			return fmt.Errorf("policy definition %s already exists in the library", k)
 		}
 		az.PolicyDefinitions[k] = v
 	}
 	for k, v := range res.PolicySetDefinitions {
-		if _, exists := az.PolicySetDefinitions[k]; exists && !az.AllowOverwrite {
+		if _, exists := az.PolicySetDefinitions[k]; exists && !az.Options.AllowOverwrite {
 			return fmt.Errorf("policy definition %s already exists in the library", k)
 		}
 		az.PolicySetDefinitions[k] = v
 	}
 	for k, v := range res.PolicyAssignments {
-		if _, exists := az.PolicyAssignments[k]; exists && !az.AllowOverwrite {
+		if _, exists := az.PolicyAssignments[k]; exists && !az.Options.AllowOverwrite {
 			return fmt.Errorf("policy assignment %s already exists in the library", k)
 		}
 		az.PolicyAssignments[k] = v
 	}
 	for k, v := range res.RoleDefinitions {
-		if _, exists := az.RoleDefinitions[k]; exists && !az.AllowOverwrite {
+		if _, exists := az.RoleDefinitions[k]; exists && !az.Options.AllowOverwrite {
 			return fmt.Errorf("role definition %s already exists in the library", k)
 		}
 		az.RoleDefinitions[k] = v
