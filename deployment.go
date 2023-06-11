@@ -26,17 +26,10 @@ var (
 
 // DeploymentType represents a deployment of Azure management group
 type DeploymentType struct {
-	MGs     map[string]*AlzManagementGroup
-	options *DeploymentOptions
-	mu      sync.RWMutex
+	MGs map[string]*AlzManagementGroup
+	//options *DeploymentOptions
+	mu sync.RWMutex
 }
-
-type DeploymentOptions struct {
-	DefaultLocation                string
-	DefaultLogAnalyticsWorkspaceId string
-}
-
-type PolicyAssignmentsParameterValues map[string]map[string]*armpolicy.ParameterValuesValue
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
@@ -56,8 +49,8 @@ type AlzManagementGroup struct {
 // Consider passing the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the DeploymentOptions are honored.
 func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
-	if d.options == nil {
-		return errors.New("deployment options not set, use .NewDeployment() to create a new deployment")
+	if arch.options == nil {
+		return errors.New("archetype deployment options not set, use .NewDeployment() to create a new deployment")
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -127,7 +120,7 @@ func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, ar
 	// re-write the policy assignment ID property to be the current MG name
 	// and go through the referenced definitions and write the definition id if it's custom
 	// and set the location property to the default location if it's not nil
-	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, d.options); err != nil {
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, arch.options); err != nil {
 		return err
 	}
 
@@ -180,7 +173,7 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 	}
 }
 
-func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *DeploymentOptions) error {
+func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *WellKnownPolicyValues) error {
 	for assignmentName, assignment := range alzmg.PolicyAssignments {
 		assignment.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, assignmentName))
 		assignment.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))

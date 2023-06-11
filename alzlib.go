@@ -36,9 +36,9 @@ type AlzLib struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	Deployment           *DeploymentType
+	Deployment           *DeploymentType // Deployment is the deployment object that stores the management group hierarchy
 	clients              *azureClients
-	mu                   sync.RWMutex
+	mu                   sync.RWMutex // mu is a mutex to concurrency protect the AlzLib maps (not the Deployment maps, which are protected by the Deployment mutex)
 }
 
 type azureClients struct {
@@ -48,8 +48,8 @@ type azureClients struct {
 // AlzLibOptions are options for the AlzLib.
 // This is created by NewAlzLib.
 type AlzLibOptions struct {
-	AllowOverwrite bool
-	Parallelism    int
+	AllowOverwrite bool // AllowOverwrite allows overwriting of existing policy assignments when processing additional libraries with AlzLib.Init()
+	Parallelism    int  // Parallelism is the number of parallel requests to make to Azure APIs
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
@@ -59,6 +59,15 @@ type Archetype struct {
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
 	RoleAssignments      map[string]*armauthorization.RoleAssignment
+	options              *WellKnownPolicyValues // options are used to populate the Archetype with well known parameter values
+}
+
+// WellKnownPolicyValues represents options for a deployment
+// These are values that are typically replaced in the deployed resources
+// E.g. location, log analytics workspace ID, etc.
+type WellKnownPolicyValues struct {
+	DefaultLocation                string
+	DefaultLogAnalyticsWorkspaceId string
 }
 
 // NewAlzLib returns a new instance of the alzlib library, optionally using the supplied directory
@@ -69,7 +78,10 @@ func NewAlzLib() (*AlzLib, error) {
 			Parallelism:    defaultParallelism,
 			AllowOverwrite: false,
 		},
-		Archetypes:           make(map[string]*Archetype),
+		Archetypes: make(map[string]*Archetype),
+		Deployment: &DeploymentType{
+			MGs: make(map[string]*AlzManagementGroup),
+		},
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
@@ -83,13 +95,6 @@ func NewAlzLib() (*AlzLib, error) {
 // This is needed to get policy objects from Azure.
 func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 	az.clients.policyClient = client
-}
-
-func (az *AlzLib) NewDeployment(do *DeploymentOptions) {
-	az.Deployment = &DeploymentType{
-		options: do,
-		MGs:     make(map[string]*AlzManagementGroup),
-	}
 }
 
 // Init processes ALZ libraries, supplied as fs.FS interfaces.
@@ -317,10 +322,10 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 	return nil
 }
 
-// WithWellKnownPolicyParameters adds the well known policy parameters to the archetype
+// WithWellKnownPolicyValues adds the well known policy parameters to the archetype
 // ready for the caller to further customize, before sending back as a parameter to
 // the Deployment.AddManagementGroup method
-func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *Archetype {
+func (arch *Archetype) WithWellKnownPolicyValues(opts *WellKnownPolicyValues) *Archetype {
 	result := new(Archetype)
 	*result = *arch
 	wk := getWellKnownPolicyAssignmentParameterValues(opts)
@@ -336,7 +341,7 @@ func (arch *Archetype) WithWellKnownPolicyParameters(opts *DeploymentOptions) *A
 			pa.Properties.Parameters[param] = value
 		}
 	}
-
+	result.options = opts
 	return result
 }
 

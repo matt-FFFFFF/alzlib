@@ -1,6 +1,13 @@
 package alzlib
 
-func getWellKnownPolicyAssignmentParameterValues(opts *DeploymentOptions) PolicyAssignmentsParameterValues {
+import "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+
+// PolicyAssignmentsParameterValues represents the values for well-known policy assignment parameters.
+// The first map key is the assignment name, the second is the parameter name, and the value is the parameter value
+type PolicyAssignmentsParameterValues map[string]map[string]*armpolicy.ParameterValuesValue
+
+// getWellKnownPolicyAssignmentParameterValues is used by the *Archetype.WithWellKnownPolicyValues() method to set the values for well-known policy assignment parameters.
+func getWellKnownPolicyAssignmentParameterValues(opts *WellKnownPolicyValues) PolicyAssignmentsParameterValues {
 	return PolicyAssignmentsParameterValues{
 		"Deploy-AzActivity-Log": {
 			"logAnalytics": {
