@@ -15,9 +15,9 @@ on:
 permissions:
   contents: read
 
-
 jobs:
   test:
+    environment: test
     strategy:
       matrix:
         go-version: [1.19.x]
@@ -32,6 +32,13 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
         cache: true
+
+    - uses: azure/login@v1
+      name: Azure login
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        allow-no-subscriptions: true
 
     - run: go test -v -race ./...
       if: matrix.os != 'ubuntu-latest'
