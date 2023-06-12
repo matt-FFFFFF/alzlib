@@ -55,6 +55,8 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 		}
 
 		additionalRas := new(PolicyAssignmentAdditionalRoleAssignments)
+		additionalRas.RoleDefinitionIds = make([]string, 0)
+		additionalRas.AdditionalScopes = make([]string, 0)
 
 		// get the policy definition name using the resource id
 		defId := pa.Properties.PolicyDefinitionID
@@ -82,17 +84,16 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 			// for each parameter with assignPermissions = true
 			// add the additional role assignment data
 			for paramName, paramVal := range pd.Properties.Parameters {
-				paramName := paramName
 				if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
 					continue
 				}
 
 				val := pa.Properties.Parameters[paramName].Value
-				valStr, ok := val.(string)
+				valStr, ok := val.(*string)
 				if !ok {
 					return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
 				}
-				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, valStr)
+				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, *valStr)
 			}
 
 		case "policySetDefinitions":
@@ -128,12 +129,15 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
 						continue
 					}
-					pdParamVal := pa.Properties.Parameters[paramName].Value
-					pdParamValStr, ok := pdParamVal.(string)
-					if !ok {
-						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
+					if _, ok := pdref.Parameters[paramName]; !ok {
+						return fmt.Errorf("parameter %s not found in policy definition %s", paramName, *pd.Name)
 					}
-					paParamName, err := extractParameterNameFromArmFunction(pdParamValStr)
+					pdrefParamVal := pdref.Parameters[paramName].Value
+					pdrefParamValStr, ok := pdrefParamVal.(*string)
+					if !ok {
+						return fmt.Errorf("parameter %s value in policy definition %s is not a string", paramName, *pd.Name)
+					}
+					paParamName, err := extractParameterNameFromArmFunction(*pdrefParamValStr)
 					if err != nil {
 						return err
 					}
@@ -141,11 +145,11 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if !ok {
 						return fmt.Errorf("parameter %s not found in policy assignment %s", paParamName, *pa.Name)
 					}
-					paParamValStr, ok := paParmVal.Value.(string)
+					paParamValStr, ok := paParmVal.Value.(*string)
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paParamName, *pa.Name)
 					}
-					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamValStr)
+					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, *paParamValStr)
 				}
 			}
 		}
@@ -230,5 +234,5 @@ func extractParameterNameFromArmFunction(value string) (string, error) {
 	if !strings.HasPrefix(value, "[parameters('") || !strings.HasSuffix(value, "')]") {
 		return "", fmt.Errorf("value is not a parameter reference")
 	}
-	return value[12 : len(value)-3], nil
+	return value[13 : len(value)-3], nil
 }

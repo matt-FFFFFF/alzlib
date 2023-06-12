@@ -381,10 +381,16 @@ func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
 	if !ok {
 		return nil, fmt.Errorf("details does not have a roleDefinitionIds property")
 	}
-	roleDefIdsSlice, ok := roleDefIds.([]string)
+	roleDefIdsSlice, ok := roleDefIds.([]any)
 	if !ok {
-		return nil, fmt.Errorf("roleDefinitionIds is not a slice of strings")
+		return nil, fmt.Errorf("roleDefinitionIds is not a slice")
 	}
-
-	return roleDefIdsSlice, nil
+	roleDefIdsSliceStr := make([]string, len(roleDefIdsSlice))
+	for i, v := range roleDefIdsSlice {
+		roleDefIdsSliceStr[i], ok = v.(string)
+		if !ok {
+			return nil, fmt.Errorf("roleDefinitionIds is not a slice of strings")
+		}
+	}
+	return roleDefIdsSliceStr, nil
 }
