@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,8 @@ func ExampleAlzLib_Init() {
 // The error details are checked for the expected error message.
 func TestNewAlzLibWithNoDir(t *testing.T) {
 	az := NewAlzLib()
-	dir := os.DirFS("./testdata/doesnotexist")
+	path := filepath.Join("testdata", "doesnotexist")
+	dir := os.DirFS(path)
 	err := az.Init(context.Background(), dir)
 
 	assert.ErrorIs(t, err, os.ErrNotExist)
