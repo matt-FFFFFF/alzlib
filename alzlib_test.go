@@ -62,7 +62,7 @@ func TestGetBuiltInPolicy(t *testing.T) {
 	az := NewAlzLib()
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		t.Skip("unable to create credential")
+		t.SkipNow()
 	}
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
@@ -76,7 +76,7 @@ func TestGetBuiltInPolicySet(t *testing.T) {
 	az := NewAlzLib()
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		t.Skip("unable to create credential")
+		t.SkipNow()
 	}
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
