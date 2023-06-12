@@ -9,6 +9,11 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
 
 
 jobs:
@@ -36,8 +41,9 @@ jobs:
       name: go test (Linux)
 
     - uses: codecov/codecov-action@v3
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && github.event_name != 'merge_group'
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.out
         verbose: true # optional (default = false)
 
