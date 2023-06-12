@@ -32,11 +32,11 @@ jobs:
     - uses: actions/checkout@v3
       name: checkout
 
-    - run: go test -v -race
+    - run: go test -v -race ./...
       if: matrix.os != 'ubuntu-latest'
       name: go test (non-Linux)
 
-    - run: go test -v -race -coverprofile=coverage.out -covermode=atomic
+    - run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
       if: matrix.os == 'ubuntu-latest'
       name: go test (Linux)
 
