@@ -4,15 +4,26 @@
 package processor
 
 import (
+	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/stretchr/testify/assert"
 )
 
+// TestFullLibrary
+func TestFullLibrary(t *testing.T) {
+	fs := os.DirFS("./testdata")
+	pc := NewProcessorClient(fs)
+	res := new(Result)
+	assert.NoError(t, pc.Process(res))
+	assert.Equal(t, len(res.LibArchetypes["root"].PolicyAssignments), 13)
+	assert.Equal(t, len(res.LibArchetypes["root"].PolicyDefinitions), 114)
+	assert.Equal(t, len(res.LibArchetypes["root"].PolicySetDefinitions), 12)
+	assert.Equal(t, len(res.LibArchetypes["root"].RoleDefinitions), 5)
+}
+
 // TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition
-// The extend_ prefix is used in the sample data and should not be removed by this process,
-// although in real use this would not be a valid id for an archetype definition
 func TestProcessArchetypeDefinitionValid(t *testing.T) {
 	sampleData := getSampleArchetypeDefinition_valid()
 	res := &Result{
