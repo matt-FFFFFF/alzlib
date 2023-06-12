@@ -136,12 +136,11 @@ func (d *DeploymentType) policySetDefinitionToMg() map[string]string {
 
 func newAlzManagementGroup() *AlzManagementGroup {
 	return &AlzManagementGroup{
-		PolicyDefinitions:      make(map[string]*armpolicy.Definition),
-		PartialRoleAssignments: make([]PartialRoleAssignment, 0),
-		PolicySetDefinitions:   make(map[string]*armpolicy.SetDefinition),
-		PolicyAssignments:      make(map[string]*armpolicy.Assignment),
-		RoleAssignments:        make(map[string]*armauthorization.RoleAssignment),
-		RoleDefinitions:        make(map[string]*armauthorization.RoleDefinition),
+		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+		RoleAssignments:      make(map[string]*armauthorization.RoleAssignment),
+		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 	}
 }
 

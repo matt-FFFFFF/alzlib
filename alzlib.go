@@ -355,3 +355,36 @@ func lastButOneSegment(s string) string {
 	parts := strings.Split(s, "/")
 	return parts[len(parts)-2]
 }
+
+func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
+	ruleMap, ok := rule.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("rule is not a map")
+	}
+	then, ok := ruleMap["then"]
+	if !ok {
+		return nil, fmt.Errorf("rule does not have a then property")
+	}
+	thenMap, ok := then.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("then is not a map")
+	}
+	details, ok := thenMap["details"]
+	if !ok {
+		return nil, fmt.Errorf("then does not have a details property")
+	}
+	detailsMap, ok := details.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("details is not a map")
+	}
+	roleDefIds, ok := detailsMap["roleDefinitionIds"]
+	if !ok {
+		return nil, fmt.Errorf("details does not have a roleDefinitionIds property")
+	}
+	roleDefIdsSlice, ok := roleDefIds.([]string)
+	if !ok {
+		return nil, fmt.Errorf("roleDefinitionIds is not a slice of strings")
+	}
+
+	return roleDefIdsSlice, nil
+}

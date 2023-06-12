@@ -1,7 +1,11 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 package alzlib
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
@@ -10,30 +14,21 @@ import (
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
-	Name                 string
-	DisplayName          string
-	PolicyDefinitions    map[string]*armpolicy.Definition
-	PolicySetDefinitions map[string]*armpolicy.SetDefinition
-	PolicyAssignments    map[string]*armpolicy.Assignment
-	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	RoleAssignments      map[string]*armauthorization.RoleAssignment
-	children             []*AlzManagementGroup
-	parent               *AlzManagementGroup
+	Name                                        string
+	DisplayName                                 string
+	PolicyDefinitions                           map[string]*armpolicy.Definition
+	PolicySetDefinitions                        map[string]*armpolicy.SetDefinition
+	PolicyAssignments                           map[string]*armpolicy.Assignment
+	RoleDefinitions                             map[string]*armauthorization.RoleDefinition
+	RoleAssignments                             map[string]*armauthorization.RoleAssignment
+	AdditionalRoleAssignmentsByPolicyAssignment map[string]*PolicyAssignmentAdditionalRoleAssignments
+	children                                    []*AlzManagementGroup
+	parent                                      *AlzManagementGroup
 }
 
-// PartialRoleAssignment represents a role assignment where we do not know the object id because the policy assignment is not yet deployed.
-type PartialRoleAssignment struct {
-	PolicyAssignment *armpolicy.Assignment
-	RoleDefinitionId string
-	Scope            string
-}
-
-type policyDefinitionRule struct {
-	then struct {
-		details struct {
-			roleDefinitionIds []string
-		}
-	}
+type PolicyAssignmentAdditionalRoleAssignments struct {
+	RoleDefinitionIds []string
+	AdditionalScopes  []string
 }
 
 func (alzmg *AlzManagementGroup) GetChildren() []*AlzManagementGroup {
@@ -48,101 +43,115 @@ func (alzmg *AlzManagementGroup) ResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
 }
 
-func (az *AlzLib) GeneratePolicyRoleAssignments() error {
-	// Look through all assignments
-	// if identity.Type is not set or None then continue
-	//
-	// if definition:
-	//   range through each definition
-	//     if definition is not in alzlib then error
-	//     look up definition and get: properties.policyRule.then.details.roleDefinitionIds
-	//     range through definition - properties.parameters
-	//       if parameter.metadata.assignPermissions is true then create a partial role assignment using the assignment parameter value
-	//
-	//
-	//
-	// if set definition:
-	//  range through each set definition
-	//    range through each referenced definition in the set
-	//      if definition is not in alzlib then error
-	//      look up definition and get: properties.policyRule.then.details.roleDefinitionIds
-	//      range through definition - properties.parameters
-	//        if parameter.metadata.assignPermissions is true then create a partial role assignment using the assignment parameter value from the parent set definition
-	//         - get the reference.Parameters[parameter.Name] value (a string), parse the set parameter name
-	//         - look up the set parameter name in the parent set definition, get the value
-
-	for _, assign := range az.PolicyAssignments {
-		if assign.Identity == nil || assign.Identity.Type == nil || *assign.Identity.Type == "None" {
+// GeneratePolicyAssignmentAdditionalRoleAssignments generates the additional role assignment data needed for the policy assignments
+// It should be run once the policy assignments map has been fully populated for a given ALZManagementGroup.
+// It will iterate through all policy assignments and generate the additional role assignments for each one,
+// storing them in the AdditionalRoleAssignmentsByPolicyAssignment map.
+func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignments(az *AlzLib) error {
+	for paName, pa := range az.PolicyAssignments {
+		// we only care about policy assignments that use an identity
+		if pa.Identity == nil || pa.Identity.Type == nil || *pa.Identity.Type == "None" {
 			continue
 		}
 
-		defId := assign.Properties.PolicyDefinitionID
+		additionalRas := new(PolicyAssignmentAdditionalRoleAssignments)
+
+		// get the policy definition name using the resource id
+		defId := pa.Properties.PolicyDefinitionID
+
 		switch lastButOneSegment(*defId) {
 		case "policyDefinitions":
-			def, ok := az.PolicyDefinitions[lastSegment(*defId)]
+			// check the definition exists in the AlzLib
+			pd, ok := az.PolicyDefinitions[lastSegment(*defId)]
 			if !ok {
 				return fmt.Errorf("policy definition %s not found in AlzLib", lastSegment(*defId))
 			}
-			roleIds, err := getPolicyDefRoleDefinitionIds(def.Properties.PolicyRule)
+
+			// get the role definition ids from the policy definition and add to the additional role assignment data
+			rids, err := getPolicyDefRoleDefinitionIds(pd.Properties.PolicyRule)
 			if err != nil {
 				return err
 			}
-			for paramName, paramVal := range def.Properties.Parameters {
+			if len(rids) == 0 {
+				return fmt.Errorf("policy definition %s has no role definition ids", *pd.Name)
+			}
+			for _, rid := range rids {
+				additionalRas.RoleDefinitionIds = appendIfMissing[string](additionalRas.RoleDefinitionIds, rid)
+			}
+
+			// for each parameter with assignPermissions = true
+			// add the additional role assignment data
+			for paramName, paramVal := range pd.Properties.Parameters {
+				paramName := paramName
 				if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
 					continue
 				}
 
+				val := pa.Properties.Parameters[paramName].Value
+				valStr, ok := val.(string)
+				if !ok {
+					return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
+				}
+				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, valStr)
 			}
+
 		case "policySetDefinitions":
+			psd, ok := az.PolicySetDefinitions[lastSegment(*defId)]
+			if !ok {
+				return fmt.Errorf("policy set definition %s not found in AlzLib", lastSegment(*defId))
+			}
+
+			// for each policy definition in the policy set definition
+			for _, pdref := range psd.Properties.PolicyDefinitions {
+				pdName := lastSegment(*pdref.PolicyDefinitionID)
+				pd, ok := az.PolicyDefinitions[pdName]
+				if !ok {
+					return fmt.Errorf("policy definition %s, referenced by %s not found in AlzLib", pdName, *psd.Name)
+				}
+
+				// get the role definition ids from the policy definition and add to the additional role assignment data
+				rids, err := getPolicyDefRoleDefinitionIds(pd.Properties.PolicyRule)
+				if err != nil {
+					return err
+				}
+				if len(rids) == 0 {
+					return fmt.Errorf("policy definition %s, refernced by %s has no role definition ids", *pd.Name, *psd.Name)
+				}
+				for _, rid := range rids {
+					additionalRas.RoleDefinitionIds = appendIfMissing[string](additionalRas.RoleDefinitionIds, rid)
+				}
+
+				// for each parameter with assignPermissions = true
+				// add the additional scopes to the additional role assignment data
+				// to do this we have to map the assignment parameter value to the policy definition parameter value
+				for paramName, paramVal := range pd.Properties.Parameters {
+					if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
+						continue
+					}
+					pdParamVal := pa.Properties.Parameters[paramName].Value
+					pdParamValStr, ok := pdParamVal.(string)
+					if !ok {
+						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
+					}
+					paParamName, err := extractParameterNameFromArmFunction(pdParamValStr)
+					if err != nil {
+						return err
+					}
+					paParmVal, ok := pa.Properties.Parameters[paParamName]
+					if !ok {
+						return fmt.Errorf("parameter %s not found in policy assignment %s", paParamName, *pa.Name)
+					}
+					paParamValStr, ok := paParmVal.Value.(string)
+					if !ok {
+						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paParamName, *pa.Name)
+					}
+					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamValStr)
+				}
+			}
 		}
-	}
-	return nil
-}
-
-func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
-	ruleMap, ok := rule.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("rule is not a map")
-	}
-	then, ok := ruleMap["then"]
-	if !ok {
-		return nil, fmt.Errorf("rule does not have a then property")
-	}
-	thenMap, ok := then.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("then is not a map")
-	}
-	details, ok := thenMap["details"]
-	if !ok {
-		return nil, fmt.Errorf("then does not have a details property")
-	}
-	detailsMap, ok := details.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("details is not a map")
-	}
-	roleDefIds, ok := detailsMap["roleDefinitionIds"]
-	if !ok {
-		return nil, fmt.Errorf("details does not have a roleDefinitionIds property")
-	}
-	roleDefIdsSlice, ok := roleDefIds.([]string)
-	if !ok {
-		return nil, fmt.Errorf("roleDefinitionIds is not a slice of strings")
+		alzmg.AdditionalRoleAssignmentsByPolicyAssignment[paName] = additionalRas
 	}
 
-	return roleDefIdsSlice, nil
-}
-
-func (alzmg *AlzManagementGroup) newPartialRoleAssignment(assignment *armpolicy.Assignment, val *armpolicy.ParameterValuesValue, roleDefId string) error {
-	scope, ok := val.Value.(string)
-	if !ok {
-		return fmt.Errorf("parameter value is not a string")
-	}
-
-	alzmg.PartialRoleAssignments = append(alzmg.PartialRoleAssignments, PartialRoleAssignment{
-		PolicyAssignment: assignment,
-		Scope:            scope,
-		RoleDefinitionId: roleDefId,
-	})
 	return nil
 }
 
@@ -204,4 +213,22 @@ func modifyRoleDefinitions(alzmg *AlzManagementGroup) {
 		}
 		roledef.Properties.AssignableScopes[0] = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
 	}
+}
+
+// appendIfMissing appends the value to the slice if it is not already in the slice
+func appendIfMissing[E comparable](slice []E, v E) []E {
+	for _, e := range slice {
+		if e == v {
+			return slice
+		}
+	}
+	return append(slice, v)
+}
+
+func extractParameterNameFromArmFunction(value string) (string, error) {
+	// value is of the form "[parameters('parameterName')]"
+	if !strings.HasPrefix(value, "[parameters('") || !strings.HasSuffix(value, "')]") {
+		return "", fmt.Errorf("value is not a parameter reference")
+	}
+	return value[12 : len(value)-3], nil
 }
