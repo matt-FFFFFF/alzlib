@@ -1,12 +1,33 @@
 package alzlib
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestE2E(t *testing.T) {
+	az := NewAlzLib()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	assert.NoError(t, err)
+	cf, err := armpolicy.NewClientFactory("", cred, nil)
+	assert.NoError(t, err)
+	az.AddPolicyClient(cf)
+	assert.NoError(t, az.Init(ctx, Lib))
+	vals := &WellKnownPolicyValues{
+		DefaultLocation:                "eastus",
+		DefaultLogAnalyticsWorkspaceId: "testlaworkspaceid",
+	}
+	arch := az.Archetypes["root"].WithWellKnownPolicyValues(vals)
+	az.Deployment.AddManagementGroup("root", "root", "", arch)
+	assert.NoError(t, az.Deployment.MGs["root"].GeneratePolicyAssignmentAdditionalRoleAssignments(az))
+}
 
 // TestGeneratePolicyAssignmentAdditionalRoleAssignments tests that the additional role assignments are generated correctly
 // based on a set assignment and a definition assignment.

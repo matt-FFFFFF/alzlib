@@ -324,10 +324,10 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 // WithWellKnownPolicyValues adds the well known policy parameters to the archetype
 // ready for the caller to further customize, before sending back as a parameter to
 // the Deployment.AddManagementGroup method
-func (arch *Archetype) WithWellKnownPolicyValues(opts *WellKnownPolicyValues) *Archetype {
+func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) *Archetype {
 	result := new(Archetype)
 	*result = *arch
-	wk := getWellKnownPolicyAssignmentParameterValues(opts)
+	wk := getWellKnownPolicyAssignmentParameterValues(wkpv)
 	for assignmentName, params := range wk {
 		pa, ok := result.PolicyAssignments[assignmentName]
 		if !ok {
@@ -340,7 +340,7 @@ func (arch *Archetype) WithWellKnownPolicyValues(opts *WellKnownPolicyValues) *A
 			pa.Properties.Parameters[param] = value
 		}
 	}
-	result.options = opts
+	result.options = wkpv
 	return result
 }
 
