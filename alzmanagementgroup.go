@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
@@ -129,6 +130,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
 						continue
 					}
+					// get the parameter value from the policy reference within the set definition
 					if _, ok := pdref.Parameters[paramName]; !ok {
 						return fmt.Errorf("parameter %s not found in policy definition %s", paramName, *pd.Name)
 					}
@@ -137,10 +139,12 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy definition %s is not a string", paramName, *pd.Name)
 					}
+					// extract the assignment exposed set parameter name from the ARM function used in the policy definition reference
 					paParamName, err := extractParameterNameFromArmFunction(*pdrefParamValStr)
 					if err != nil {
 						return err
 					}
+					// get the parameter value from the assignment
 					paParmVal, ok := pa.Properties.Parameters[paParamName]
 					if !ok {
 						return fmt.Errorf("parameter %s not found in policy assignment %s", paParamName, *pa.Name)
@@ -148,6 +152,9 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					paParamValStr, ok := paParmVal.Value.(*string)
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paParamName, *pa.Name)
+					}
+					if _, err := arm.ParseResourceID(*paParamValStr); err != nil {
+						return fmt.Errorf("parameter %s value in policy assignment %s is not an ARM resource id", paParamName, *pa.Name)
 					}
 					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, *paParamValStr)
 				}

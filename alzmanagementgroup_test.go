@@ -8,6 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestGeneratePolicyAssignmentAdditionalRoleAssignments tests that the additional role assignments are generated correctly
+// based on a set assignment and a definition assignment.
+// It tests that the parameter values for the assignment are mapped correctly through the policy set, to the policy definition.
 func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	// create a new AlzLib instance
 	az := NewAlzLib()
@@ -26,7 +29,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		Properties: &armpolicy.AssignmentProperties{
 			PolicyDefinitionID: to.Ptr("/providers/Microsoft.Authorization/policyDefinitions/test-policy-definition"),
 			Parameters: map[string]*armpolicy.ParameterValuesValue{
-				"parameter1": {Value: to.Ptr("value1")},
+				"parameter1": {Value: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg")},
 				"parameter2": {Value: to.Ptr("value2")},
 			},
 		},
@@ -34,15 +37,15 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 
 	// create a new policy assignment for the definition
 	paSetDef := &armpolicy.Assignment{
-		Name: to.Ptr("test-policy-assignment2"),
+		Name: to.Ptr("test-policy-set-assignment"),
 		Type: to.Ptr("Microsoft.Authorization/policyAssignments"),
 
 		Identity: &armpolicy.Identity{Type: to.Ptr(armpolicy.ResourceIdentityTypeSystemAssigned)},
 		Properties: &armpolicy.AssignmentProperties{
 			PolicyDefinitionID: to.Ptr("/providers/Microsoft.Authorization/policySetDefinitions/test-policy-set-definition"),
 			Parameters: map[string]*armpolicy.ParameterValuesValue{
-				"setparameter1": {Value: to.Ptr("setvalue1")},
-				"setparameter2": {Value: to.Ptr("setvalue2")},
+				"setparameter1": {Value: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg")},
+				"setparameter2": {Value: to.Ptr("value2")},
 			},
 		},
 	}
@@ -166,9 +169,9 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	additionalRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition"}, additionalRas.RoleDefinitionIds)
-	assert.Equal(t, []string{"value1"}, additionalRas.AdditionalScopes)
+	assert.Equal(t, []string{*paDef.Properties.Parameters["parameter1"].Value.(*string)}, additionalRas.AdditionalScopes)
 	additionalSetRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paSetDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds)
-	assert.Equal(t, []string{"setvalue1"}, additionalSetRas.AdditionalScopes)
+	assert.Equal(t, []string{*paSetDef.Properties.Parameters["setparameter1"].Value.(*string)}, additionalSetRas.AdditionalScopes)
 }
