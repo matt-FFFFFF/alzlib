@@ -54,11 +54,11 @@ type AlzLibOptions struct {
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
 type Archetype struct {
-	PolicyDefinitions    map[string]*armpolicy.Definition
-	PolicyAssignments    map[string]*armpolicy.Assignment
-	PolicySetDefinitions map[string]*armpolicy.SetDefinition
-	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	options              *WellKnownPolicyValues // options are used to populate the Archetype with well known parameter values
+	PolicyDefinitions     map[string]*armpolicy.Definition
+	PolicyAssignments     map[string]*armpolicy.Assignment
+	PolicySetDefinitions  map[string]*armpolicy.SetDefinition
+	RoleDefinitions       map[string]*armauthorization.RoleDefinition
+	wellKnownPolicyValues *WellKnownPolicyValues // options are used to populate the Archetype with well known parameter values
 }
 
 // WellKnownPolicyValues represents options for a deployment
@@ -128,8 +128,9 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 	}
 
 	// Get the assigned built-in definitions and set definitions
+	// For set defs we need to get all of them, even if they exist in AlzLib already because they can contain built-in definitions
 	builtInDefs := make([]string, 0)
-	builtInSetDefs := make([]string, 0)
+	referencedSetDefs := make([]string, 0)
 	for _, arch := range az.Archetypes {
 		for _, pa := range arch.PolicyAssignments {
 			pd := *pa.Properties.PolicyDefinitionID
@@ -139,9 +140,7 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 					builtInDefs = append(builtInDefs, lastSegment(pd))
 				}
 			case "policysetdefinitions":
-				if _, exists := az.PolicySetDefinitions[lastSegment(pd)]; !exists {
-					builtInSetDefs = append(builtInSetDefs, lastSegment(pd))
-				}
+				referencedSetDefs = append(referencedSetDefs, lastSegment(pd))
 			default:
 				return fmt.Errorf("unexpected policy definition type when processing assignments: %s", pd)
 			}
@@ -155,8 +154,8 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 			return err
 		}
 	}
-	if len(builtInSetDefs) != 0 {
-		if err := az.GetBuiltInPolicySets(ctx, builtInSetDefs); err != nil {
+	if len(referencedSetDefs) != 0 {
+		if err := az.GetBuiltInPolicySets(ctx, referencedSetDefs); err != nil {
 			return err
 		}
 	}
@@ -340,7 +339,7 @@ func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) *A
 			pa.Properties.Parameters[param] = value
 		}
 	}
-	result.options = wkpv
+	result.wellKnownPolicyValues = wkpv
 	return result
 }
 

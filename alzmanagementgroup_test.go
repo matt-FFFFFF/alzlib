@@ -50,8 +50,8 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		Properties: &armpolicy.AssignmentProperties{
 			PolicyDefinitionID: to.Ptr("/providers/Microsoft.Authorization/policyDefinitions/test-policy-definition"),
 			Parameters: map[string]*armpolicy.ParameterValuesValue{
-				"parameter1": {Value: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg")},
-				"parameter2": {Value: to.Ptr("value2")},
+				"parameter1": {Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg"},
+				"parameter2": {Value: "value2"},
 			},
 		},
 	}
@@ -65,8 +65,8 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		Properties: &armpolicy.AssignmentProperties{
 			PolicyDefinitionID: to.Ptr("/providers/Microsoft.Authorization/policySetDefinitions/test-policy-set-definition"),
 			Parameters: map[string]*armpolicy.ParameterValuesValue{
-				"setparameter1": {Value: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg")},
-				"setparameter2": {Value: to.Ptr("value2")},
+				"setparameter1": {Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg"},
+				"setparameter2": {Value: "value2"},
 			},
 		},
 	}
@@ -190,9 +190,9 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	additionalRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition"}, additionalRas.RoleDefinitionIds)
-	assert.Equal(t, []string{*paDef.Properties.Parameters["parameter1"].Value.(*string)}, additionalRas.AdditionalScopes)
+	assert.Equal(t, []string{paDef.Properties.Parameters["parameter1"].Value.(string)}, additionalRas.AdditionalScopes)
 	additionalSetRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paSetDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds)
-	assert.Equal(t, []string{*paSetDef.Properties.Parameters["setparameter1"].Value.(*string)}, additionalSetRas.AdditionalScopes)
+	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes)
 }

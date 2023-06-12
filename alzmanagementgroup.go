@@ -49,7 +49,7 @@ func (alzmg *AlzManagementGroup) ResourceId() string {
 // It will iterate through all policy assignments and generate the additional role assignments for each one,
 // storing them in the AdditionalRoleAssignmentsByPolicyAssignment map.
 func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignments(az *AlzLib) error {
-	for paName, pa := range az.PolicyAssignments {
+	for paName, pa := range alzmg.PolicyAssignments {
 		// we only care about policy assignments that use an identity
 		if pa.Identity == nil || pa.Identity.Type == nil || *pa.Identity.Type == "None" {
 			continue
@@ -90,11 +90,11 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				}
 
 				val := pa.Properties.Parameters[paramName].Value
-				valStr, ok := val.(*string)
+				valStr, ok := val.(string)
 				if !ok {
 					return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
 				}
-				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, *valStr)
+				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, valStr)
 			}
 
 		case "policySetDefinitions":
@@ -135,12 +135,12 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 						return fmt.Errorf("parameter %s not found in policy definition %s", paramName, *pd.Name)
 					}
 					pdrefParamVal := pdref.Parameters[paramName].Value
-					pdrefParamValStr, ok := pdrefParamVal.(*string)
+					pdrefParamValStr, ok := pdrefParamVal.(string)
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy definition %s is not a string", paramName, *pd.Name)
 					}
 					// extract the assignment exposed set parameter name from the ARM function used in the policy definition reference
-					paParamName, err := extractParameterNameFromArmFunction(*pdrefParamValStr)
+					paParamName, err := extractParameterNameFromArmFunction(pdrefParamValStr)
 					if err != nil {
 						return err
 					}

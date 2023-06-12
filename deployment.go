@@ -38,7 +38,7 @@ type DeploymentType struct {
 // Consider passing the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the DeploymentOptions are honored.
 func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
-	if arch.options == nil {
+	if arch.wellKnownPolicyValues == nil {
 		return errors.New("archetype deployment options not set, use .NewDeployment() to create a new deployment")
 	}
 	d.mu.Lock()
@@ -104,7 +104,7 @@ func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, ar
 	// re-write the policy assignment ID property to be the current MG name
 	// and go through the referenced definitions and write the definition id if it's custom
 	// and set the location property to the default location if it's not nil
-	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, arch.options); err != nil {
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, arch.wellKnownPolicyValues); err != nil {
 		return err
 	}
 
