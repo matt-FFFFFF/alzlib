@@ -26,7 +26,7 @@ func TestWellKnownParameterReplacement(t *testing.T) {
 	}
 
 	arch := az.Archetypes["test"].WithWellKnownPolicyValues(vals)
-	az.Deployment.AddManagementGroup("test", "test", "", arch)
+	assert.NoError(t, az.Deployment.AddManagementGroup("test", "test", "", arch))
 
 	paramValue := az.Deployment.MGs["test"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value
 	assert.Equal(t, "testlaworkspaceid", paramValue)
