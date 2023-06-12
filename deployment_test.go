@@ -11,14 +11,11 @@ import (
 
 // TestWellKnownParameterReplacement demonstrates the replacement of well-known parameters
 func TestWellKnownParameterReplacement(t *testing.T) {
-	az, err := NewAlzLib()
-	if err != nil {
-		fmt.Println(err)
-	}
+	az := NewAlzLib()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dirfs := os.DirFS("./testdata/wellknownparameters")
-	err = az.Init(ctx, dirfs)
+	err := az.Init(ctx, dirfs)
 	if err != nil {
 		fmt.Println(err)
 	}

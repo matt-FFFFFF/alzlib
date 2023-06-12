@@ -58,7 +58,6 @@ type Archetype struct {
 	PolicyAssignments    map[string]*armpolicy.Assignment
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
 	RoleDefinitions      map[string]*armauthorization.RoleDefinition
-	RoleAssignments      map[string]*armauthorization.RoleAssignment
 	options              *WellKnownPolicyValues // options are used to populate the Archetype with well known parameter values
 }
 
@@ -72,7 +71,7 @@ type WellKnownPolicyValues struct {
 
 // NewAlzLib returns a new instance of the alzlib library, optionally using the supplied directory
 // for additional policy (set) definitions.
-func NewAlzLib() (*AlzLib, error) {
+func NewAlzLib() *AlzLib {
 	az := &AlzLib{
 		Options: &AlzLibOptions{
 			Parallelism:    defaultParallelism,
@@ -88,17 +87,17 @@ func NewAlzLib() (*AlzLib, error) {
 		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 		clients:              new(azureClients),
 	}
-	return az, nil
+	return az
 }
 
-// AddPolicyClient adds an authenticeted *armpolicy.ClientFactory to the AlzLib struct.
+// AddPolicyClient adds an authenticated *armpolicy.ClientFactory to the AlzLib struct.
 // This is needed to get policy objects from Azure.
 func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 	az.clients.policyClient = client
 }
 
 // Init processes ALZ libraries, supplied as fs.FS interfaces.
-// These are typically the embed.FS var Lib, or an os.DirFS.
+// These are typically the embed.FS global var `Lib`, or an `os.DirFS`.
 // It populates the struct with the results of the processing.
 func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 	// Process the libraries

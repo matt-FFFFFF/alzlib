@@ -16,14 +16,11 @@ import (
 
 // ExampleAlzLib_Init demonstrates the creation of a new AlzLib based a sample directory
 func ExampleAlzLib_Init() {
-	az, err := NewAlzLib()
-	if err != nil {
-		fmt.Println(err)
-	}
+	az := NewAlzLib()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dirfs := os.DirFS("./testdata/simple")
-	err = az.Init(ctx, dirfs)
+	err := az.Init(ctx, dirfs)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -36,7 +33,7 @@ func ExampleAlzLib_Init() {
 // that does not exist.
 // The error details are checked for the expected error message.
 func TestNewAlzLibWithNoDir(t *testing.T) {
-	az, _ := NewAlzLib()
+	az := NewAlzLib()
 	dir := os.DirFS("./testdata/doesnotexist")
 	err := az.Init(context.Background(), dir)
 
@@ -47,46 +44,43 @@ func TestNewAlzLibWithNoDir(t *testing.T) {
 // path that is not a directory.
 // The error details are checked for the expected error message.
 func TestNewAlzLibWithNotADir(t *testing.T) {
-	az, _ := NewAlzLib()
+	az := NewAlzLib()
 	dir := os.DirFS("./testdata/notadirectory")
 	err := az.Init(context.Background(), dir)
 	assert.ErrorContains(t, err, "not a directory")
 }
 
-// Benchmark_NewAlzLib benchmarks the creation of a new AlzLib based on the embedded data set
-func Benchmark_NewAlzLib(b *testing.B) {
-	az, e := NewAlzLib()
-	az.Init(context.Background(), Lib)
-	if e != nil {
-		b.Error(e)
-	}
-}
-
 // Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory
 func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
-	az, _ := NewAlzLib()
+	az := NewAlzLib()
 	dir := os.DirFS("./testdata/badlib-duplicatearchetypedef")
 	err := az.Init(context.Background(), dir)
 	assert.ErrorContains(t, err, "archetype with name duplicate already exists")
 }
 
 func TestGetBuiltInPolicy(t *testing.T) {
-	az, _ := NewAlzLib()
-	cred, _ := azidentity.NewDefaultAzureCredential(nil)
+	az := NewAlzLib()
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		t.Skip("unable to create credential")
+	}
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
-	err := az.GetBuiltInPolicies(context.Background(), []string{"8154e3b3-cc52-40be-9407-7756581d71f6"})
+	err = az.GetBuiltInPolicies(context.Background(), []string{"8154e3b3-cc52-40be-9407-7756581d71f6"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(az.PolicyDefinitions))
 	assert.Equal(t, "Microsoft Managed Control 1614 - Developer Security Architecture And Design", *az.PolicyDefinitions["8154e3b3-cc52-40be-9407-7756581d71f6"].Properties.DisplayName)
 }
 
 func TestGetBuiltInPolicySet(t *testing.T) {
-	az, _ := NewAlzLib()
-	cred, _ := azidentity.NewDefaultAzureCredential(nil)
+	az := NewAlzLib()
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		t.Skip("unable to create credential")
+	}
 	cf, _ := armpolicy.NewClientFactory("", cred, nil)
 	az.AddPolicyClient(cf)
-	err := az.GetBuiltInPolicySets(context.Background(), []string{"7379ef4c-89b0-48b6-a5cc-fd3a75eaef93"})
+	err = az.GetBuiltInPolicySets(context.Background(), []string{"7379ef4c-89b0-48b6-a5cc-fd3a75eaef93"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(az.PolicySetDefinitions))
 	assert.Equal(t, "Evaluate Private Link Usage Across All Supported Azure Resources", *az.PolicySetDefinitions["7379ef4c-89b0-48b6-a5cc-fd3a75eaef93"].Properties.DisplayName)
