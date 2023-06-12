@@ -35,7 +35,7 @@ func TestNewAlzLibWithNoDir(t *testing.T) {
 	dir := os.DirFS("./testdata/doesnotexist")
 	err := az.Init(context.Background(), dir)
 
-	assert.ErrorContains(t, err, "no such file or directory")
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
