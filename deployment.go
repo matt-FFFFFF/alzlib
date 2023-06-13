@@ -32,11 +32,11 @@ type DeploymentType struct {
 
 // AddManagementGroup adds a management group to the deployment, with a parent if specified.
 // If the parent is not specified, the management group is considered the root of the hierarchy.
-// You should passing the source Archetype through the .WithWellKnownPolicyParameters() method
+// You should pass the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the wellKnownPolicyValues are honored.
 func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
 	if arch.wellKnownPolicyValues == nil {
-		return errors.New("archetype deployment options not set, use Archetype.WithWellKnownPolicyValues() to update")
+		return errors.New("archetype well known values not set, use Archetype.WithWellKnownPolicyValues() to update")
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -191,7 +191,7 @@ func modifyRoleDefinitions(alzmg *AlzManagementGroup) {
 		if roledef.Properties.AssignableScopes == nil || len(roledef.Properties.AssignableScopes) == 0 {
 			roledef.Properties.AssignableScopes = make([]*string, 1)
 		}
-		roledef.Properties.AssignableScopes[0] = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
+		roledef.Properties.AssignableScopes[0] = to.Ptr(alzmg.GetResourceId())
 	}
 }
 

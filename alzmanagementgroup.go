@@ -184,6 +184,10 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 	return nil
 }
 
+func (alzmg *AlzManagementGroup) GetResourceId() string {
+	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
+}
+
 // appendIfMissing appends the value to the slice if it is not already in the slice
 func appendIfMissing[E comparable](slice []E, v E) []E {
 	for _, e := range slice {

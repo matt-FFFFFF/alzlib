@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -425,4 +426,78 @@ func TestModifyPolicyAssignments(t *testing.T) {
 	assert.Error(t, err)
 	expected = "policy assignment pa1 has invalid referenced definition id invalid"
 	assert.Equal(t, expected, err.Error())
+}
+
+func TestAddManagementGroup(t *testing.T) {
+	// create a new deployment type
+	wkvs := &WellKnownPolicyValues{
+		DefaultLocation: "eastus",
+	}
+
+	d := DeploymentType{
+		MGs: make(map[string]*AlzManagementGroup),
+	}
+
+	// create a new archetype
+	arch := &Archetype{
+		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
+		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
+	}
+	arch = arch.WithWellKnownPolicyValues(wkvs)
+
+	// test adding a new management group with no parent
+	err := d.AddManagementGroup("mg1", "mg1", "", arch)
+	assert.NoError(t, err)
+	assert.Len(t, d.MGs, 1)
+	assert.Contains(t, d.MGs, "mg1")
+	assert.Equal(t, "mg1", d.MGs["mg1"].Name)
+	assert.Equal(t, "mg1", d.MGs["mg1"].DisplayName)
+	assert.Nil(t, d.MGs["mg1"].parent)
+	assert.Empty(t, d.MGs["mg1"].children)
+
+	// test adding a new management group with a parent
+	err = d.AddManagementGroup("mg2", "mg2", "mg1", arch)
+	assert.NoError(t, err)
+	assert.Len(t, d.MGs, 2)
+	assert.Contains(t, d.MGs, "mg2")
+	assert.Equal(t, "mg2", d.MGs["mg2"].Name)
+	assert.Equal(t, "mg2", d.MGs["mg2"].DisplayName)
+	assert.NotNil(t, d.MGs["mg2"].parent)
+	assert.Equal(t, "mg1", d.MGs["mg2"].parent.Name)
+	assert.Len(t, d.MGs["mg1"].children, 1)
+	assert.Equal(t, "mg2", d.MGs["mg1"].children[0].Name)
+
+	// test adding a new management group with a non-existent parent
+	err = d.AddManagementGroup("mg3", "mg3", "mg4", arch)
+	assert.Error(t, err)
+	assert.Len(t, d.MGs, 2)
+	assert.Contains(t, d.MGs, "mg1")
+	assert.Contains(t, d.MGs, "mg2")
+	assert.NotContains(t, d.MGs, "mg3")
+
+	// test adding a new management group with multiple root management groups
+	err = d.AddManagementGroup("mg4", "mg4", "", arch)
+	assert.Error(t, err)
+	assert.Len(t, d.MGs, 2)
+	assert.Contains(t, d.MGs, "mg1")
+	assert.Contains(t, d.MGs, "mg2")
+	assert.NotContains(t, d.MGs, "mg4")
+
+	// test adding a new management group with an existing name
+	err = d.AddManagementGroup("mg1", "mg1", "", arch)
+	assert.Error(t, err)
+	assert.Len(t, d.MGs, 2)
+	assert.Contains(t, d.MGs, "mg1")
+	assert.Contains(t, d.MGs, "mg2")
+}
+
+func TestNewUUID(t *testing.T) {
+	// create a new UUID namespace
+	ns := uuid.MustParse("d97506b3-4470-5694-a203-2c37e477d3ac")
+
+	u := uuidV5("foo", "bar", "baz")
+
+	assert.Equal(t, ns.String(), u.String())
 }
