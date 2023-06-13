@@ -29,14 +29,13 @@ var (
 // DeploymentType represents a deployment of Azure management group
 type DeploymentType struct {
 	MGs map[string]*AlzManagementGroup
-	//options *DeploymentOptions
-	mu sync.RWMutex
+	mu  sync.RWMutex
 }
 
 // AddManagementGroup adds a management group to the deployment, with a parent if specified.
 // If the parent is not specified, the management group is considered the root of the hierarchy.
 // Consider passing the source Archetype through the .WithWellKnownPolicyParameters() method
-// to ensure that the values in the DeploymentOptions are honored.
+// to ensure that the values in the wellKnownPolicyValues are honored.
 func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
 	if arch.wellKnownPolicyValues == nil {
 		return errors.New("archetype deployment options not set, use .NewDeployment() to create a new deployment")
@@ -136,6 +135,7 @@ func (d *DeploymentType) policySetDefinitionToMg() map[string]string {
 
 func newAlzManagementGroup() *AlzManagementGroup {
 	return &AlzManagementGroup{
+		AdditionalRoleAssignmentsByPolicyAssignment: make(map[string]*PolicyAssignmentAdditionalRoleAssignments),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),

@@ -73,7 +73,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 			// get the role definition ids from the policy definition and add to the additional role assignment data
 			rids, err := getPolicyDefRoleDefinitionIds(pd.Properties.PolicyRule)
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting role definition ids for policy definition %s: %w", *pd.Name, err)
 			}
 			if len(rids) == 0 {
 				return fmt.Errorf("policy definition %s has no role definition ids", *pd.Name)
@@ -114,7 +114,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				// get the role definition ids from the policy definition and add to the additional role assignment data
 				rids, err := getPolicyDefRoleDefinitionIds(pd.Properties.PolicyRule)
 				if err != nil {
-					return err
+					return fmt.Errorf("error getting role definition ids for policy definition %s: %w", *pd.Name, err)
 				}
 				if len(rids) == 0 {
 					return fmt.Errorf("policy definition %s, refernced by %s has no role definition ids", *pd.Name, *psd.Name)
@@ -139,24 +139,24 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy definition %s is not a string", paramName, *pd.Name)
 					}
-					// extract the assignment exposed set parameter name from the ARM function used in the policy definition reference
+					// extract the assignment exposed policy set parameter name from the ARM function used in the policy definition reference
 					paParamName, err := extractParameterNameFromArmFunction(pdrefParamValStr)
 					if err != nil {
 						return err
 					}
-					// get the parameter value from the assignment
+					// get the parameter value from the assignment, check that it's a string and an ARM resource id
 					paParmVal, ok := pa.Properties.Parameters[paParamName]
 					if !ok {
 						return fmt.Errorf("parameter %s not found in policy assignment %s", paParamName, *pa.Name)
 					}
-					paParamValStr, ok := paParmVal.Value.(*string)
+					paParamValStr, ok := paParmVal.Value.(string)
 					if !ok {
 						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paParamName, *pa.Name)
 					}
-					if _, err := arm.ParseResourceID(*paParamValStr); err != nil {
+					if _, err := arm.ParseResourceID(paParamValStr); err != nil {
 						return fmt.Errorf("parameter %s value in policy assignment %s is not an ARM resource id", paParamName, *pa.Name)
 					}
-					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, *paParamValStr)
+					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamValStr)
 				}
 			}
 		}
