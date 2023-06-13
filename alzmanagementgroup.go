@@ -4,6 +4,7 @@
 package alzlib
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -42,6 +43,27 @@ func (alzmg *AlzManagementGroup) GetParent() *AlzManagementGroup {
 
 func (alzmg *AlzManagementGroup) ResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
+}
+
+// PolicyDefinitionRule represents the rule section of a policy definition.
+// This is used to determine the role assignments that need to be created,
+// therefore we only care about the `then` field.
+type PolicyDefinitionRule struct {
+	Then *PolicyDefinitionRuleThen `json:"then"`
+}
+
+// PolicyDefinitionRuleThen represents the `then` section of a policy definition rule.
+// This is used to determine the role assignments that need to be created.
+// We only care about the `details` field.
+type PolicyDefinitionRuleThen struct {
+	Details *PolicyDefinitionRuleThenDetails `json:"details"`
+}
+
+// PolicyDefinitionRuleThenDetails represents the `details` section of a policy definition rule `then` section.
+// This is used to determine the role assignments that need to be created.
+// We only care about the `roleDefinitionIds` field.
+type PolicyDefinitionRuleThenDetails struct {
+	RoleDefinitionIds []string `json:"roleDefinitionIds"`
 }
 
 // GeneratePolicyAssignmentAdditionalRoleAssignments generates the additional role assignment data needed for the policy assignments
@@ -115,9 +137,6 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				rids, err := getPolicyDefRoleDefinitionIds(pd.Properties.PolicyRule)
 				if err != nil {
 					return fmt.Errorf("error getting role definition ids for policy definition %s: %w", *pd.Name, err)
-				}
-				if len(rids) == 0 {
-					return fmt.Errorf("policy definition %s, refernced by %s has no role definition ids", *pd.Name, *psd.Name)
 				}
 				for _, rid := range rids {
 					additionalRas.RoleDefinitionIds = appendIfMissing[string](additionalRas.RoleDefinitionIds, rid)
@@ -198,6 +217,7 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		}
 
 		// rewrite the referenced policy definition id
+		// if the policy definition is in the list
 		pd := assignment.Properties.PolicyDefinitionID
 		switch lastButOneSegment(*pd) {
 		case "policyDefinitions":
@@ -242,4 +262,22 @@ func extractParameterNameFromArmFunction(value string) (string, error) {
 		return "", fmt.Errorf("value is not a parameter reference")
 	}
 	return value[13 : len(value)-3], nil
+}
+
+// getPolicyDefRoleDefinitionIds returns the role definition ids referenced in a policy definition
+// if they exist.
+// We marshall the policyRule as JSON and then unmarshal into a custom type
+func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
+	j, err := json.Marshal(rule)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall policy rule: %w", err)
+	}
+	r := new(PolicyDefinitionRule)
+	if err := json.Unmarshal(j, r); err != nil {
+		return nil, fmt.Errorf("could not unmarshall policy rule: %w", err)
+	}
+	if r.Then.Details == nil || r.Then.Details.RoleDefinitionIds == nil || len(r.Then.Details.RoleDefinitionIds) == 0 {
+		return []string{}, nil
+	}
+	return r.Then.Details.RoleDefinitionIds, nil
 }
