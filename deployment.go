@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/google/uuid"
@@ -165,9 +164,6 @@ func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string
 		// rewrite the referenced policy definition id
 		// if the policy definition is in the list
 		pd := assignment.Properties.PolicyDefinitionID
-		if _, err := arm.ParseResourceID(*pd); err != nil {
-			return fmt.Errorf("policy assignment %s has invalid referenced definition id %s", assignmentName, *pd)
-		}
 		switch lastButOneSegment(*pd) {
 		case "policyDefinitions":
 			if mgname, ok := pd2mg[lastSegment(*pd)]; ok {

@@ -346,6 +346,9 @@ func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) *A
 // lastSegment returns the last segment of a string separated by "/"
 func lastSegment(s string) string {
 	parts := strings.Split(s, "/")
+	if len(parts) == 0 || len(parts) == 1 {
+		return ""
+	}
 	return parts[len(parts)-1]
 }
 
