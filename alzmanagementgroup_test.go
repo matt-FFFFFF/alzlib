@@ -197,3 +197,27 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds)
 	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes)
 }
+
+func TestExtractParameterNameFromArmFunction(t *testing.T) {
+	// Test with a valid parameter reference
+	value := "[parameters('parameterName')]"
+	expected := "parameterName"
+	actual, err := extractParameterNameFromArmFunction(value)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+	// Test with an invalid prefix
+	value = "[param('parameterName')]"
+	_, err = extractParameterNameFromArmFunction(value)
+	assert.Error(t, err)
+
+	// Test with an invalid suffix
+	value = "[parameters('parameterName')"
+	_, err = extractParameterNameFromArmFunction(value)
+	assert.Error(t, err)
+
+	// Test with an invalid format
+	value = "parameters('parameterName')"
+	_, err = extractParameterNameFromArmFunction(value)
+	assert.Error(t, err)
+}

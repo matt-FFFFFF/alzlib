@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
@@ -183,67 +182,6 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 	}
 
 	return nil
-}
-
-func modifyPolicyDefinitions(alzmg *AlzManagementGroup) {
-	for k, v := range alzmg.PolicyDefinitions {
-		v.ID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, alzmg.Name, k))
-	}
-}
-
-// These for loops re-write the referenced policy definition resource IDs
-// for all policy sets.
-// It looks up the policy definition names that are in all archetypes in the Deployment.
-// If it is found, the definition reference id is re-written with the correct management group name.
-// If it is not found, we assume that it's built-in.
-func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]string) {
-	for k, v := range alzmg.PolicySetDefinitions {
-		v.ID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, alzmg.Name, k))
-		for _, pd := range v.Properties.PolicyDefinitions {
-			pdname := lastSegment(*pd.PolicyDefinitionID)
-			if mgname, ok := pd2mg[pdname]; ok {
-				pd.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, pdname))
-			}
-		}
-	}
-}
-
-func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *WellKnownPolicyValues) error {
-	for assignmentName, assignment := range alzmg.PolicyAssignments {
-		assignment.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, assignmentName))
-		assignment.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
-		if assignment.Location != nil {
-			assignment.Location = to.Ptr(opts.DefaultLocation)
-		}
-
-		// rewrite the referenced policy definition id
-		// if the policy definition is in the list
-		pd := assignment.Properties.PolicyDefinitionID
-		switch lastButOneSegment(*pd) {
-		case "policyDefinitions":
-			if mgname, ok := pd2mg[lastSegment(*pd)]; ok {
-				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, lastSegment(*pd)))
-			}
-		case "policySetDefinitions":
-			if mgname, ok := psd2mg[lastSegment(*pd)]; ok {
-				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, mgname, lastSegment(*pd)))
-			}
-		default:
-			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", assignmentName, *pd)
-		}
-	}
-	return nil
-}
-
-func modifyRoleDefinitions(alzmg *AlzManagementGroup) {
-	for _, roledef := range alzmg.RoleDefinitions {
-		u := uuidV5(alzmg.Name, *roledef.Name)
-		roledef.ID = to.Ptr(fmt.Sprintf(roleDefinitionIdFmt, alzmg.Name, u))
-		if roledef.Properties.AssignableScopes == nil || len(roledef.Properties.AssignableScopes) == 0 {
-			roledef.Properties.AssignableScopes = make([]*string, 1)
-		}
-		roledef.Properties.AssignableScopes[0] = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
-	}
 }
 
 // appendIfMissing appends the value to the slice if it is not already in the slice
