@@ -424,11 +424,12 @@ func TestModifyPolicyAssignments(t *testing.T) {
 	psd2mg = map[string]string{}
 	err = modifyPolicyAssignments(alzmg, pd2mg, psd2mg, opts)
 	assert.Error(t, err)
-	expected = "policy assignment pa1 has invalid referenced definition id invalid"
-	assert.Equal(t, expected, err.Error())
+	expected = "has invalid resource type in id"
+	assert.ErrorContains(t, err, expected)
 }
 
 func TestAddManagementGroup(t *testing.T) {
+	t.Parallel()
 	// create a new deployment type
 	wkvs := &WellKnownPolicyValues{
 		DefaultLocation: "eastus",
@@ -494,6 +495,7 @@ func TestAddManagementGroup(t *testing.T) {
 }
 
 func TestNewUUID(t *testing.T) {
+	t.Parallel()
 	// create a new UUID namespace
 	ns := uuid.MustParse("d97506b3-4470-5694-a203-2c37e477d3ac")
 

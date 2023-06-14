@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	"github.com/matt-FFFFFF/alzlib/to"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,16 +30,17 @@ func TestE2E(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestGeneratePolicyAssignmentAdditionalRoleAssignments tests that the additional role assignments are generated correctly
-// based on a set assignment and a definition assignment.
-// It tests that the parameter values for the assignment are mapped correctly through the policy set, to the policy definition.
 func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
+	t.Parallel()
 	// create a new AlzLib instance
 	az := NewAlzLib()
 
 	// create a new AlzManagementGroup instance
 	alzmg := &AlzManagementGroup{
 		AdditionalRoleAssignmentsByPolicyAssignment: make(map[string]*PolicyAssignmentAdditionalRoleAssignments),
+		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
+		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 	}
 
 	// create a new policy assignment for the definition
@@ -88,8 +89,8 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 				{
 					PolicyDefinitionID: to.Ptr("/providers/Microsoft.Authorization/policyDefinitions/test-policy-definition2"),
 					Parameters: map[string]*armpolicy.ParameterValuesValue{
-						"parameter1": {Value: to.Ptr("[parameters('setparameter1')]")},
-						"parameter2": {Value: to.Ptr("[parameters('setparameter1')]")},
+						"parameter1": {Value: "[parameters('setparameter1')]"},
+						"parameter2": {Value: "[parameters('setparameter1')]"},
 					},
 				},
 			},
@@ -172,12 +173,20 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		},
 	}
 
-	// add the policy (set) definitions and role definition to the AlzLib
-	az.PolicyDefinitions[*pd1.Name] = pd1
-	az.PolicyDefinitions[*pd2.Name] = pd2
-	az.PolicySetDefinitions[*ps.Name] = ps
+	// add the policy (set) definitions to the arch
+	alzmg.PolicyDefinitions[*pd1.Name] = pd1
+	alzmg.PolicyDefinitions[*pd2.Name] = pd2
+	alzmg.PolicySetDefinitions[*ps.Name] = ps
 
-	// add the policy assignments to the AlzLib
+	// add the policy assignments to the arch
+	alzmg.PolicyAssignments[*paDef.Name] = paDef
+	alzmg.PolicyAssignments[*paSetDef.Name] = paSetDef
+
+	// add the policy (set) definitions to the alzlib
+	az.PolicyDefinitions[*pd2.Name] = pd2
+	az.PolicyDefinitions[*pd1.Name] = pd1
+	az.PolicySetDefinitions[*ps.Name] = ps
+	// add the policy assignments to the arch
 	az.PolicyAssignments[*paDef.Name] = paDef
 	az.PolicyAssignments[*paSetDef.Name] = paSetDef
 
@@ -199,6 +208,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 }
 
 func TestExtractParameterNameFromArmFunction(t *testing.T) {
+	t.Parallel()
 	// Test with a valid parameter reference
 	value := "[parameters('parameterName')]"
 	expected := "parameterName"

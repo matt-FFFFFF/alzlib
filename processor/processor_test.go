@@ -13,6 +13,7 @@ import (
 
 // TestFullLibrary
 func TestFullLibrary(t *testing.T) {
+	t.Parallel()
 	fs := os.DirFS("./testdata")
 	pc := NewProcessorClient(fs)
 	res := new(Result)
@@ -25,6 +26,7 @@ func TestFullLibrary(t *testing.T) {
 
 // TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition
 func TestProcessArchetypeDefinitionValid(t *testing.T) {
+	t.Parallel()
 	sampleData := getSampleArchetypeDefinition_valid()
 	res := &Result{
 		LibArchetypes: make(map[string]*LibArchetype, 0),
@@ -41,6 +43,7 @@ func TestProcessArchetypeDefinitionValid(t *testing.T) {
 // TestProcessArchetypeDefinition_multipleTopLevelObjects tests that the correct error
 // is generated when there as JSON errors in the archetype definition
 func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
+	t.Parallel()
 	sampleData := getSampleArchetypeDefinition_invalidJson()
 	res := &Result{
 		LibArchetypes: make(map[string]*LibArchetype, 0),
@@ -51,6 +54,7 @@ func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
 
 // TestProcessPolicyAssignmentValid tests the processing of a valid policy assignment
 func TestProcessPolicyAssignmentValid(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicyAssignment()
 	res := &Result{
 		PolicyAssignments: make(map[string]*armpolicy.Assignment),
@@ -65,6 +69,7 @@ func TestProcessPolicyAssignmentValid(t *testing.T) {
 // TestProcessPolicyAssignmentNoName tests that the processing of a assignment
 // with a missing name field throws the correct error
 func TestProcessPolicyAssignmentNoName(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicyAssignment_noName()
 	res := &Result{
 		PolicyAssignments: make(map[string]*armpolicy.Assignment),
@@ -74,6 +79,7 @@ func TestProcessPolicyAssignmentNoName(t *testing.T) {
 
 // TestProcessPolicyDefinitionValid tests the processing of a valid policy definition
 func TestProcessPolicyDefinitionValid(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicyDefinition()
 	res := &Result{
 		PolicyDefinitions: make(map[string]*armpolicy.Definition),
@@ -87,6 +93,7 @@ func TestProcessPolicyDefinitionValid(t *testing.T) {
 // TestProcessPolicyDefinitionNoName tests that the processing of a definition
 // with a missing name field throws the correct error
 func TestProcessPolicyDefinitionNoName(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicyDefinition_noName()
 	res := &Result{
 		PolicyDefinitions: make(map[string]*armpolicy.Definition),
@@ -96,6 +103,7 @@ func TestProcessPolicyDefinitionNoName(t *testing.T) {
 
 // TestProcessSetPolicyDefinitionValid tests the processing of a valid policy set definition
 func TestProcessSetPolicyDefinitionValid(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicySetDefinition()
 	res := &Result{
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
@@ -110,6 +118,7 @@ func TestProcessSetPolicyDefinitionValid(t *testing.T) {
 // TestProcessPolicySetDefinitionNoName tests that the processing of a set definition
 // with a missing name field throws the correct error
 func TestProcessPolicySetDefinitionNoName(t *testing.T) {
+	t.Parallel()
 	sampleData := getSamplePolicySetDefinition_noName()
 	res := &Result{
 		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
@@ -120,18 +129,21 @@ func TestProcessPolicySetDefinitionNoName(t *testing.T) {
 
 // TestProcessPolicyAssignmentNoData tests the processing of an invalid policy assignment with no data
 func TestProcessPolicyAssignmentNoData(t *testing.T) {
+	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicyAssignment(res, make([]byte, 0)), "error unmarshalling policy assignment")
 }
 
 // TestProcessPolicyDefinitionNoData tests the processing of an invalid policy definition with no data
 func TestProcessPolicyDefinitionNoData(t *testing.T) {
+	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicyDefinition(res, make([]byte, 0)), "error unmarshalling policy definition")
 }
 
 // TestProcessSetPolicyDefinitionNoData tests the processing of an invalid policy set definition with no data
 func TestProcessPolicySetDefinitionNoData(t *testing.T) {
+	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicySetDefinition(res, make([]byte, 0)), "error unmarshalling policy set definition")
 }

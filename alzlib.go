@@ -129,18 +129,33 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 
 	// Get the assigned built-in definitions and set definitions
 	// For set defs we need to get all of them, even if they exist in AlzLib already because they can contain built-in definitions
-	builtInDefs := make([]string, 0)
-	referencedSetDefs := make([]string, 0)
+	policyDefsToGet := make([]string, 0)
+	policySetDefsToGet := make([]string, 0)
 	for _, arch := range az.Archetypes {
 		for _, pa := range arch.PolicyAssignments {
 			pd := *pa.Properties.PolicyDefinitionID
 			switch strings.ToLower(lastButOneSegment(pd)) {
 			case "policydefinitions":
 				if _, exists := az.PolicyDefinitions[lastSegment(pd)]; !exists {
-					builtInDefs = append(builtInDefs, lastSegment(pd))
+					policyDefsToGet = appendIfMissing(policyDefsToGet, lastSegment(pd))
 				}
 			case "policysetdefinitions":
-				referencedSetDefs = append(referencedSetDefs, lastSegment(pd))
+				// If the set is not present, OR if the set contains referenced definitions that are not present
+				// add it to the list of set defs to get
+				psd, exists := az.PolicySetDefinitions[lastSegment(pd)]
+				if exists {
+					for _, ref := range psd.Properties.PolicyDefinitions {
+						if ref.PolicyDefinitionID == nil {
+							return fmt.Errorf("policy set definition %s has a nil policy definition ID", *psd.Name)
+						}
+						if _, exists := az.PolicyDefinitions[lastSegment(*ref.PolicyDefinitionID)]; !exists {
+							policyDefsToGet = appendIfMissing(policyDefsToGet, lastSegment(*ref.PolicyDefinitionID))
+						}
+					}
+				} else {
+					policySetDefsToGet = append(policySetDefsToGet, lastSegment(pd))
+				}
+
 			default:
 				return fmt.Errorf("unexpected policy definition type when processing assignments: %s", pd)
 			}
@@ -149,13 +164,13 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 
 	// Add the referenced built-in definitions and set definitions to the AlzLib struct
 	// so that we can use the data to determine the correct role assignments at scope.
-	if len(builtInDefs) != 0 {
-		if err := az.GetBuiltInPolicies(ctx, builtInDefs); err != nil {
+	if len(policyDefsToGet) != 0 {
+		if err := az.GetBuiltInPolicies(ctx, policyDefsToGet); err != nil {
 			return err
 		}
 	}
-	if len(referencedSetDefs) != 0 {
-		if err := az.GetBuiltInPolicySets(ctx, referencedSetDefs); err != nil {
+	if len(policySetDefsToGet) != 0 {
+		if err := az.GetBuiltInPolicySets(ctx, policySetDefsToGet); err != nil {
 			return err
 		}
 	}
@@ -346,8 +361,8 @@ func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) *A
 // lastSegment returns the last segment of a string separated by "/"
 func lastSegment(s string) string {
 	parts := strings.Split(s, "/")
-	if len(parts) == 0 || len(parts) == 1 {
-		return ""
+	if len(parts) <= 1 {
+		return "s"
 	}
 	return parts[len(parts)-1]
 }
@@ -355,5 +370,8 @@ func lastSegment(s string) string {
 // lastButOneSegment returns the last but one segment of a string separated by "/"
 func lastButOneSegment(s string) string {
 	parts := strings.Split(s, "/")
+	if len(parts) <= 2 {
+		return "s"
+	}
 	return parts[len(parts)-2]
 }
