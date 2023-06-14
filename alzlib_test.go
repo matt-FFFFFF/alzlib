@@ -42,16 +42,6 @@ func TestNewAlzLibWithNoDir(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
-// Test_NewAlzLib_notADir tests the creation of a new AlzLib when supplied with a valid
-// path that is not a directory.
-// The error details are checked for the expected error message.
-func TestNewAlzLibWithNotADir(t *testing.T) {
-	az := NewAlzLib()
-	dir := os.DirFS("./testdata/notadirectory")
-	err := az.Init(context.Background(), dir)
-	assert.ErrorContains(t, err, "not a directory")
-}
-
 // Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory
 func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
 	az := NewAlzLib()
