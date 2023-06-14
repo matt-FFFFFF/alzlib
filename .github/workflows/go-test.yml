@@ -9,58 +9,52 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
 
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   test:
+    environment: test
     strategy:
       matrix:
-        go-version: [1.18.x]
+        go-version: [1.20.x]
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+    - uses: actions/checkout@v3
+      name: checkout
+
     - uses: actions/setup-go@v4
       name: setup go
       with:
         go-version: ${{ matrix.go-version }}
-    - uses: actions/checkout@v3
-      name: checkout
+        cache: true
 
-    - run: go test -v -race
+    - uses: azure/login@v1
+      name: Azure login
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        allow-no-subscriptions: true
+
+    - run: make test
       if: matrix.os != 'ubuntu-latest'
-      name: go test (non-Linux)
+      name: make test
 
-    - run: go test -v -race -coverprofile=coverage.out -covermode=atomic
+    - run: make testrace
+      name: make testrace
       if: matrix.os == 'ubuntu-latest'
-      name: go test (Linux)
+
+    - run: make testcover
+      name: make testrace
+      if: matrix.os == 'ubuntu-latest'
 
     - uses: codecov/codecov-action@v3
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && github.event_name != 'merge_group'
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.out
-        verbose: true # optional (default = false)
-
-
-  # test-cache:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/setup-go@v4
-  #     with:
-  #       go-version: 1.18.x
-  #   - uses: actions/checkout@v3
-  #   - uses: actions/cache@v2
-  #     with:
-  #       # In order:
-  #       # * Module download cache
-  #       # * Build cache (Linux)
-  #       # * Build cache (Mac)
-  #       # * Build cache (Windows)
-  #       path: |
-  #         ~/go/pkg/mod
-  #         ~/.cache/go-build
-  #         ~/Library/Caches/go-build
-  #         ~\AppData\Local\go-build
-  #       key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-  #       restore-keys: |
-  #         ${{ runner.os }}-go-${{ matrix.go-version }}-
-  #   - run: go test ./...
