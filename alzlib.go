@@ -73,10 +73,7 @@ type WellKnownPolicyValues struct {
 // for additional policy (set) definitions.
 func NewAlzLib() *AlzLib {
 	az := &AlzLib{
-		Options: &AlzLibOptions{
-			Parallelism:    defaultParallelism,
-			AllowOverwrite: false,
-		},
+		Options:    getDefaultAlzLibOptions(),
 		Archetypes: make(map[string]*Archetype),
 		Deployment: &DeploymentType{
 			MGs: make(map[string]*AlzManagementGroup),
@@ -90,6 +87,13 @@ func NewAlzLib() *AlzLib {
 	return az
 }
 
+func getDefaultAlzLibOptions() *AlzLibOptions {
+	return &AlzLibOptions{
+		Parallelism:    defaultParallelism,
+		AllowOverwrite: false,
+	}
+}
+
 // AddPolicyClient adds an authenticated *armpolicy.ClientFactory to the AlzLib struct.
 // This is needed to get policy objects from Azure.
 func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
@@ -100,6 +104,10 @@ func (az *AlzLib) AddPolicyClient(client *armpolicy.ClientFactory) {
 // These are typically the embed.FS global var `Lib`, or an `os.DirFS`.
 // It populates the struct with the results of the processing.
 func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
+	if az.Options == nil || az.Options.Parallelism == 0 {
+		return errors.New("alzlib Options not set or parallelism is 0")
+	}
+
 	// Process the libraries
 	for i, lib := range libs {
 		res := new(processor.Result)
