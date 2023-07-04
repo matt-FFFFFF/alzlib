@@ -50,7 +50,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
 
     - run: make testcover
-      name: make testrace
+      name: make testcover
       if: matrix.os == 'ubuntu-latest'
 
     - uses: codecov/codecov-action@v3
