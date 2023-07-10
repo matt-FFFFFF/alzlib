@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
@@ -25,21 +24,53 @@ type AlzManagementGroup struct {
 	AdditionalRoleAssignmentsByPolicyAssignment map[string]*PolicyAssignmentAdditionalRoleAssignments
 	children                                    []*AlzManagementGroup
 	parent                                      *AlzManagementGroup
+	parentExternal                              *string
 }
 
+// PolicyAssignmentAdditionalRoleAssignments represents the additional role assignments that need to be created for a management group.
+// Since we could be using system assigned identities, we don't know the principal ID until after the deployment.
+// Therefore this data can be used to create the role assignments after the deployment.
 type PolicyAssignmentAdditionalRoleAssignments struct {
 	RoleDefinitionIds []string
 	AdditionalScopes  []string
 }
 
+// GetChildren returns the children of the management group.
 func (alzmg *AlzManagementGroup) GetChildren() []*AlzManagementGroup {
 	return alzmg.children
 }
 
-func (alzmg *AlzManagementGroup) GetParent() *AlzManagementGroup {
+// GetParentId returns the ID of the parent management group.
+// If the parent is external, this will be preferred.
+// If neither are set an empty string is returned (though this should never happen).
+func (alzmg *AlzManagementGroup) GetParentId() string {
+	if alzmg.parentExternal != nil {
+		return *alzmg.parentExternal
+	}
+	if alzmg.parent != nil {
+		return alzmg.parent.Name
+	}
+	return ""
+}
+
+// GetParentMg returns parent *AlzManagementGroup.
+// If the parent is external, the result will be nil
+func (alzmg *AlzManagementGroup) GetParentMg() *AlzManagementGroup {
+	if alzmg.parentExternal != nil {
+		return nil
+	}
 	return alzmg.parent
 }
 
+// ParentIsExternal returns a bool value depending on whether the parent MG is external or not.
+func (alzmg *AlzManagementGroup) ParentIsExternal() bool {
+	if alzmg.parentExternal != nil && *alzmg.parentExternal != "" {
+		return true
+	}
+	return false
+}
+
+// ResourceId returns the resource ID of the management group.
 func (alzmg *AlzManagementGroup) ResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
 }
@@ -109,13 +140,11 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				if paramVal.Metadata == nil || paramVal.Metadata.AssignPermissions == nil || !*paramVal.Metadata.AssignPermissions {
 					continue
 				}
-
-				val := pa.Properties.Parameters[paramName].Value
-				valStr, ok := val.(string)
-				if !ok {
-					return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramName, *pa.Name)
+				paParamVal, err := getPolicyAssignmentParametersValueValue(pa, paramName)
+				if err != nil {
+					continue
 				}
-				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, valStr)
+				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamVal)
 			}
 
 		case "policySetDefinitions":
@@ -162,19 +191,13 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if err != nil {
 						return err
 					}
-					// get the parameter value from the assignment, check that it's a string and an ARM resource id
-					paParmVal, ok := pa.Properties.Parameters[paParamName]
-					if !ok {
-						return fmt.Errorf("parameter %s not found in policy assignment %s", paParamName, *pa.Name)
+
+					// if the parameter in the assignment doesn't exist, skip it
+					paParamVal, err := getPolicyAssignmentParametersValueValue(pa, paParamName)
+					if err != nil {
+						continue
 					}
-					paParamValStr, ok := paParmVal.Value.(string)
-					if !ok {
-						return fmt.Errorf("parameter %s value in policy assignment %s is not a string", paParamName, *pa.Name)
-					}
-					if _, err := arm.ParseResourceID(paParamValStr); err != nil {
-						return fmt.Errorf("parameter %s value in policy assignment %s is not an ARM resource id", paParamName, *pa.Name)
-					}
-					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamValStr)
+					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamVal)
 				}
 			}
 		}
@@ -222,4 +245,22 @@ func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
 		return []string{}, nil
 	}
 	return r.Then.Details.RoleDefinitionIds, nil
+}
+
+func getPolicyAssignmentParametersValueValue(pa *armpolicy.Assignment, paramname string) (string, error) {
+	if pa.Properties.Parameters == nil {
+		return "", fmt.Errorf("parameters is nil in policy assignment %s", *pa.Name)
+	}
+	paParamVal, ok := pa.Properties.Parameters[paramname]
+	if !ok {
+		return "", fmt.Errorf("parameter %s not found in policy assignment %s", paramname, *pa.Name)
+	}
+	if paParamVal.Value == nil {
+		return "", fmt.Errorf("parameter %s value field in policy assignment %s is nil", paramname, *pa.Name)
+	}
+	paParamValStr, ok := paParamVal.Value.(string)
+	if !ok {
+		return "", fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramname, *pa.Name)
+	}
+	return paParamValStr, nil
 }

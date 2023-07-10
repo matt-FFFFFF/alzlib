@@ -25,7 +25,7 @@ func TestE2E(t *testing.T) {
 		DefaultLogAnalyticsWorkspaceId: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.OperationalInsights/workspaces/testlaworkspaceid",
 	}
 	arch := az.Archetypes["root"].WithWellKnownPolicyValues(vals)
-	assert.NoError(t, az.Deployment.AddManagementGroup("root", "root", "", arch))
+	assert.NoError(t, az.Deployment.AddManagementGroup("root", "root", "external", true, arch))
 	err = az.Deployment.MGs["root"].GeneratePolicyAssignmentAdditionalRoleAssignments(az)
 	assert.NoError(t, err)
 }

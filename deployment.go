@@ -33,7 +33,7 @@ type DeploymentType struct {
 // If the parent is not specified, the management group is considered the root of the hierarchy.
 // You should pass the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the wellKnownPolicyValues are honored.
-func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, arch *Archetype) error {
+func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, parentIsExternal bool, arch *Archetype) error {
 	if arch.wellKnownPolicyValues == nil {
 		return errors.New("archetype well known values not set, use Archetype.WithWellKnownPolicyValues() to update")
 	}
@@ -47,17 +47,26 @@ func (d *DeploymentType) AddManagementGroup(name, displayName, parent string, ar
 	alzmg.Name = name
 	alzmg.DisplayName = displayName
 	alzmg.children = make([]*AlzManagementGroup, 0)
-	if parent != "" {
-		if _, ok := d.MGs[parent]; !ok {
-			return fmt.Errorf("parent management group %s does not exist", parent)
+	if parentIsExternal {
+		if _, ok := d.MGs[parent]; ok {
+			return fmt.Errorf("external parent management group set, but already exists %s", parent)
 		}
-		alzmg.parent = d.MGs[parent]
-		alzmg.parent.children = append(alzmg.parent.children, alzmg)
+
+		alzmg.parentExternal = to.Ptr[string](parent)
+	}
+	if !parentIsExternal && parent != "" {
+		mg, ok := d.MGs[parent]
+		if !ok {
+			return fmt.Errorf("parent management group not found %s", parent)
+		}
+		alzmg.parent = mg
+		d.MGs[parent].children = appendIfMissing(d.MGs[parent].children, alzmg)
 	}
 
-	if parent == "" {
+	// We only allow one intermediate root management group, so check if this is the first one
+	if parentIsExternal {
 		for mgname, mg := range d.MGs {
-			if mg.parent == nil {
+			if mg.parentExternal != nil {
 				return fmt.Errorf("multiple root management groups: %s and %s", mgname, name)
 			}
 		}
