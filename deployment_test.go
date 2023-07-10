@@ -31,7 +31,7 @@ func TestWellKnownParameterReplacement(t *testing.T) {
 	}
 
 	arch := az.Archetypes["test"].WithWellKnownPolicyValues(vals)
-	assert.NoError(t, az.Deployment.AddManagementGroup("test", "test", "", arch))
+	assert.NoError(t, az.Deployment.AddManagementGroup("test", "test", "external", true, arch))
 
 	paramValue := az.Deployment.MGs["test"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value
 	assert.Equal(t, "testlaworkspaceid", paramValue)
@@ -449,7 +449,7 @@ func TestAddManagementGroup(t *testing.T) {
 	arch = arch.WithWellKnownPolicyValues(wkvs)
 
 	// test adding a new management group with no parent
-	err := d.AddManagementGroup("mg1", "mg1", "", arch)
+	err := d.AddManagementGroup("mg1", "mg1", "external", true, arch)
 	assert.NoError(t, err)
 	assert.Len(t, d.MGs, 1)
 	assert.Contains(t, d.MGs, "mg1")
@@ -459,7 +459,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Empty(t, d.MGs["mg1"].children)
 
 	// test adding a new management group with a parent
-	err = d.AddManagementGroup("mg2", "mg2", "mg1", arch)
+	err = d.AddManagementGroup("mg2", "mg2", "mg1", false, arch)
 	assert.NoError(t, err)
 	assert.Len(t, d.MGs, 2)
 	assert.Contains(t, d.MGs, "mg2")
@@ -471,7 +471,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Equal(t, "mg2", d.MGs["mg1"].children[0].Name)
 
 	// test adding a new management group with a non-existent parent
-	err = d.AddManagementGroup("mg3", "mg3", "mg4", arch)
+	err = d.AddManagementGroup("mg3", "mg3", "mg4", false, arch)
 	assert.Error(t, err)
 	assert.Len(t, d.MGs, 2)
 	assert.Contains(t, d.MGs, "mg1")
@@ -479,7 +479,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.NotContains(t, d.MGs, "mg3")
 
 	// test adding a new management group with multiple root management groups
-	err = d.AddManagementGroup("mg4", "mg4", "", arch)
+	err = d.AddManagementGroup("mg4", "mg4", "external", true, arch)
 	assert.Error(t, err)
 	assert.Len(t, d.MGs, 2)
 	assert.Contains(t, d.MGs, "mg1")
@@ -487,7 +487,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.NotContains(t, d.MGs, "mg4")
 
 	// test adding a new management group with an existing name
-	err = d.AddManagementGroup("mg1", "mg1", "", arch)
+	err = d.AddManagementGroup("mg1", "mg1", "external", true, arch)
 	assert.Error(t, err)
 	assert.Len(t, d.MGs, 2)
 	assert.Contains(t, d.MGs, "mg1")

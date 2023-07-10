@@ -27,7 +27,7 @@ func ExampleAlzLib_Init() {
 	}
 	fmt.Printf("Archetype count: %d\n", len(az.Archetypes))
 	// Output:
-	// Archetype count: 1
+	// Archetype count: 2
 }
 
 // Test_NewAlzLib_noDir tests the creation of a new AlzLib when supplied with a path

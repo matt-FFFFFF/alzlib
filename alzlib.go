@@ -116,12 +116,6 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 			return fmt.Errorf("error processing library %v: %w", lib, err)
 		}
 
-		// Only support definitions  (role, policy, policy set) in the first library
-		if i != 0 {
-			res.PolicyAssignments = make(map[string]*armpolicy.Assignment, 0)
-			res.LibArchetypes = make(map[string]*processor.LibArchetype, 0)
-		}
-
 		// Put results into the AlzLib
 		if err := az.addProcessedResult(res); err != nil {
 			return err
@@ -304,6 +298,18 @@ func (az *AlzLib) addProcessedResult(res *processor.Result) error {
 // generateArchetypes generates the archetypes from the result of the processor.
 // The archetypes are stored in the AlzLib instance.
 func (az *AlzLib) generateArchetypes(res *processor.Result) error {
+	// add empty archetype if it doesn't exist
+	if _, exists := res.LibArchetypes["empty"]; !exists {
+		res.LibArchetypes["empty"] = &processor.LibArchetype{
+			Name:                 "empty",
+			PolicyAssignments:    make([]string, 0),
+			PolicyDefinitions:    make([]string, 0),
+			PolicySetDefinitions: make([]string, 0),
+			RoleDefinitions:      make([]string, 0),
+		}
+	}
+
+	// generate alzlib archetypes
 	for k, v := range res.LibArchetypes {
 		if _, exists := az.Archetypes[k]; exists {
 			return fmt.Errorf("archetype %s already exists in the library", v.Name)
