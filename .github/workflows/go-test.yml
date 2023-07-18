@@ -8,7 +8,8 @@ on:
     branches:
       - main
   pull_request_target:
-    branches: main
+    branches:
+      - main
   workflow_dispatch:
   merge_group:
     types: [checks_requested]
