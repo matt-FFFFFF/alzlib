@@ -108,10 +108,11 @@ func (az *AlzLib) ListArchetypes() []string {
 
 // CopyArchetype returns a copy of the requested archetype by name.
 // The returned struct can be used as a parameter to the Deployment.AddManagementGroup method.
-func (az *AlzLib) CopyArchetype(name string) (*Archetype, error) {
+func (az *AlzLib) CopyArchetype(name string, wkpv *WellKnownPolicyValues) (*Archetype, error) {
 	if arch, ok := az.archetypes[name]; ok {
 		rtn := new(Archetype)
 		*rtn = *arch
+		rtn.wellKnownPolicyValues = wkpv
 		return rtn, nil
 	}
 	return nil, fmt.Errorf("archetype %s not found", name)
@@ -178,10 +179,10 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 
 	// Get the policy definitions and policy set definitions referenced by the policy assignments
 	assignedPolicyDefinitionIds := sets.NewSet[string]()
-	for _, arch := range az.archetypes {
-		for pa, _ := range arch.PolicyAssignments {
+	for archname, arch := range az.archetypes {
+		for pa := range arch.PolicyAssignments {
 			if _, exists := az.policyAssignments[pa]; !exists {
-				return fmt.Errorf("policy assignment %s referenced in archetype %s does not exist in the library", pa, arch)
+				return fmt.Errorf("policy assignment %s referenced in archetype %s does not exist in the library", pa, archname)
 			}
 			assignedPolicyDefinitionIds.Add(*az.policyAssignments[pa].Properties.PolicyDefinitionID)
 		}
@@ -198,13 +199,13 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 // It then fetches them from Azure if needed and adds them to the AlzLib struct.
 // For set definitions we need to get all of them, even if they exist in AlzLib already because they can contain built-in definitions.
 func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) error {
-	policyDefsToGet := make([]string, 0)
-	policySetDefsToGet := make([]string, 0)
+	policyDefsToGet := sets.NewSet[string]()
+	policySetDefsToGet := sets.NewSet[string]()
 	for _, pd := range pds {
 		switch strings.ToLower(lastButOneSegment(pd)) {
 		case "policydefinitions":
 			if _, exists := az.policyDefinitions[lastSegment(pd)]; !exists {
-				policyDefsToGet = appendIfMissing(policyDefsToGet, lastSegment(pd))
+				policyDefsToGet.Add(lastSegment(pd))
 			}
 		case "policysetdefinitions":
 			// If the set is not present, OR if the set contains referenced definitions that are not present
@@ -216,11 +217,11 @@ func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) err
 						return fmt.Errorf("policy set definition %s has a nil policy definition ID", *psd.Name)
 					}
 					if _, exists := az.policyDefinitions[lastSegment(*ref.PolicyDefinitionID)]; !exists {
-						policyDefsToGet = appendIfMissing(policyDefsToGet, lastSegment(*ref.PolicyDefinitionID))
+						policyDefsToGet.Add(lastSegment(*ref.PolicyDefinitionID))
 					}
 				}
 			} else {
-				policySetDefsToGet = appendIfMissing(policySetDefsToGet, lastSegment(pd))
+				policySetDefsToGet.Add(lastSegment(pd))
 			}
 
 		default:
@@ -231,12 +232,12 @@ func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) err
 	// Add the referenced built-in definitions and set definitions to the AlzLib struct
 	// so that we can use the data to determine the correct role assignments at scope.
 	if len(policyDefsToGet) != 0 {
-		if err := az.GetBuiltInPolicies(ctx, policyDefsToGet); err != nil {
+		if err := az.GetBuiltInPolicies(ctx, policyDefsToGet.Members()); err != nil {
 			return err
 		}
 	}
 	if len(policySetDefsToGet) != 0 {
-		if err := az.GetBuiltInPolicySets(ctx, policySetDefsToGet); err != nil {
+		if err := az.GetBuiltInPolicySets(ctx, policySetDefsToGet.Members()); err != nil {
 			return err
 		}
 	}
@@ -410,28 +411,6 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 		az.archetypes[v.Name] = arch
 	}
 	return nil
-}
-
-// WithWellKnownPolicyValues adds the well known policy parameters to the archetype
-// ready for the caller to further customize, before sending back as a parameter to
-// the Deployment.AddManagementGroup method
-func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) {
-	// result := new(Archetype)
-	// *result = *arch
-	// wk := getWellKnownPolicyAssignmentParameterValues(wkpv)
-	// for assignmentName, params := range wk {
-	// 	pa, ok := result.PolicyAssignments[assignmentName]
-	// 	if !ok {
-	// 		continue
-	// 	}
-	// 	if pa.Properties.Parameters == nil {
-	// 		pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
-	// 	}
-	// 	for param, value := range params {
-	// 		pa.Properties.Parameters[param] = value
-	// 	}
-	// }
-	arch.wellKnownPolicyValues = wkpv
 }
 
 // lastSegment returns the last segment of a string separated by "/"

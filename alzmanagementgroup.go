@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	"github.com/matt-FFFFFF/alzlib/sets"
 )
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
@@ -22,7 +23,7 @@ type AlzManagementGroup struct {
 	RoleDefinitions                             map[string]*armauthorization.RoleDefinition
 	RoleAssignments                             map[string]*armauthorization.RoleAssignment
 	AdditionalRoleAssignmentsByPolicyAssignment map[string]*PolicyAssignmentAdditionalRoleAssignments
-	children                                    []*AlzManagementGroup
+	children                                    sets.Set[*AlzManagementGroup]
 	parent                                      *AlzManagementGroup
 	parentExternal                              *string
 }
@@ -31,13 +32,13 @@ type AlzManagementGroup struct {
 // Since we could be using system assigned identities, we don't know the principal ID until after the deployment.
 // Therefore this data can be used to create the role assignments after the deployment.
 type PolicyAssignmentAdditionalRoleAssignments struct {
-	RoleDefinitionIds []string
-	AdditionalScopes  []string
+	RoleDefinitionIds sets.Set[string]
+	AdditionalScopes  sets.Set[string]
 }
 
 // GetChildren returns the children of the management group.
 func (alzmg *AlzManagementGroup) GetChildren() []*AlzManagementGroup {
-	return alzmg.children
+	return alzmg.children.Members()
 }
 
 // GetParentId returns the ID of the parent management group.
@@ -108,8 +109,8 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 		}
 
 		additionalRas := new(PolicyAssignmentAdditionalRoleAssignments)
-		additionalRas.RoleDefinitionIds = make([]string, 0)
-		additionalRas.AdditionalScopes = make([]string, 0)
+		additionalRas.RoleDefinitionIds = sets.NewSet[string]()
+		additionalRas.AdditionalScopes = sets.NewSet[string]()
 
 		// get the policy definition name using the resource id
 		defId := pa.Properties.PolicyDefinitionID
@@ -131,7 +132,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				return fmt.Errorf("policy definition %s has no role definition ids", *pd.Name)
 			}
 			for _, rid := range rids {
-				additionalRas.RoleDefinitionIds = appendIfMissing[string](additionalRas.RoleDefinitionIds, rid)
+				additionalRas.RoleDefinitionIds.Add(rid)
 			}
 
 			// for each parameter with assignPermissions = true
@@ -144,7 +145,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				if err != nil {
 					continue
 				}
-				additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamVal)
+				additionalRas.AdditionalScopes.Add(paParamVal)
 			}
 
 		case "policySetDefinitions":
@@ -167,7 +168,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					return fmt.Errorf("error getting role definition ids for policy definition %s: %w", *pd.Name, err)
 				}
 				for _, rid := range rids {
-					additionalRas.RoleDefinitionIds = appendIfMissing[string](additionalRas.RoleDefinitionIds, rid)
+					additionalRas.RoleDefinitionIds.Add(rid)
 				}
 
 				// for each parameter with assignPermissions = true
@@ -197,7 +198,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 					if err != nil {
 						continue
 					}
-					additionalRas.AdditionalScopes = appendIfMissing[string](additionalRas.AdditionalScopes, paParamVal)
+					additionalRas.AdditionalScopes.Add(paParamVal)
 				}
 			}
 		}
@@ -209,16 +210,6 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 
 func (alzmg *AlzManagementGroup) GetResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
-}
-
-// appendIfMissing appends the value to the slice if it is not already in the slice
-func appendIfMissing[E comparable](slice []E, v E) []E {
-	for _, e := range slice {
-		if e == v {
-			return slice
-		}
-	}
-	return append(slice, v)
 }
 
 func extractParameterNameFromArmFunction(value string) (string, error) {

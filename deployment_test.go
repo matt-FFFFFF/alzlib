@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/google/uuid"
+	"github.com/matt-FFFFFF/alzlib/sets"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,32 +31,12 @@ func TestWellKnownParameterReplacement(t *testing.T) {
 		DefaultLogAnalyticsWorkspaceId: "testlaworkspaceid",
 	}
 
-	arch := az.archetypes["test"].WithWellKnownPolicyValues(vals)
-	assert.NoError(t, az.Deployment.AddManagementGroup("test", "test", "external", true, arch))
+	arch, err := az.CopyArchetype("test", vals)
+	assert.NoError(t, err)
+	assert.NoError(t, az.AddManagementGroupToDeployment("test", "test", "external", true, arch))
 
 	paramValue := az.Deployment.MGs["test"].PolicyAssignments["Deploy-AzActivity-Log"].Properties.Parameters["logAnalytics"].Value
 	assert.Equal(t, "testlaworkspaceid", paramValue)
-}
-
-func TestAppendIfMissing(t *testing.T) {
-	t.Parallel()
-	// Test appending to an empty slice
-	slice := []int{}
-	slice = appendIfMissing(slice, 1)
-	assert.Equal(t, []int{1}, slice)
-
-	// Test appending a value that is already in the slice
-	slice = appendIfMissing(slice, 1)
-	assert.Equal(t, []int{1}, slice)
-
-	// Test appending a value that is not in the slice
-	slice = appendIfMissing(slice, 2)
-	assert.Equal(t, []int{1, 2}, slice)
-
-	// Test appending to a slice of strings
-	strSlice := []string{"foo", "bar"}
-	strSlice = appendIfMissing(strSlice, "baz")
-	assert.Equal(t, []string{"foo", "bar", "baz"}, strSlice)
 }
 
 func TestPolicySetDefinitionToMg(t *testing.T) {
@@ -434,64 +415,61 @@ func TestAddManagementGroup(t *testing.T) {
 	wkvs := &WellKnownPolicyValues{
 		DefaultLocation: "eastus",
 	}
-
-	d := DeploymentType{
-		MGs: make(map[string]*AlzManagementGroup),
-	}
+	az := NewAlzLib()
 
 	// create a new archetype
 	arch := &Archetype{
-		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
-		PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
-		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
-		RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
+		PolicyDefinitions:    sets.NewSet[string](),
+		PolicySetDefinitions: sets.NewSet[string](),
+		PolicyAssignments:    sets.NewSet[string](),
+		RoleDefinitions:      sets.NewSet[string](),
 	}
-	arch = arch.WithWellKnownPolicyValues(wkvs)
+	arch.wellKnownPolicyValues = wkvs
 
 	// test adding a new management group with no parent
-	err := d.AddManagementGroup("mg1", "mg1", "external", true, arch)
+	err := az.AddManagementGroupToDeployment("mg1", "mg1", "external", true, arch)
 	assert.NoError(t, err)
-	assert.Len(t, d.MGs, 1)
-	assert.Contains(t, d.MGs, "mg1")
-	assert.Equal(t, "mg1", d.MGs["mg1"].Name)
-	assert.Equal(t, "mg1", d.MGs["mg1"].DisplayName)
-	assert.Nil(t, d.MGs["mg1"].parent)
-	assert.Empty(t, d.MGs["mg1"].children)
+	assert.Len(t, az.Deployment.MGs, 1)
+	assert.Contains(t, az.Deployment.MGs, "mg1")
+	assert.Equal(t, "mg1", az.Deployment.MGs["mg1"].Name)
+	assert.Equal(t, "mg1", az.Deployment.MGs["mg1"].DisplayName)
+	assert.Nil(t, az.Deployment.MGs["mg1"].parent)
+	assert.Empty(t, az.Deployment.MGs["mg1"].children)
 
 	// test adding a new management group with a parent
-	err = d.AddManagementGroup("mg2", "mg2", "mg1", false, arch)
+	err = az.AddManagementGroupToDeployment("mg2", "mg2", "mg1", false, arch)
 	assert.NoError(t, err)
-	assert.Len(t, d.MGs, 2)
-	assert.Contains(t, d.MGs, "mg2")
-	assert.Equal(t, "mg2", d.MGs["mg2"].Name)
-	assert.Equal(t, "mg2", d.MGs["mg2"].DisplayName)
-	assert.NotNil(t, d.MGs["mg2"].parent)
-	assert.Equal(t, "mg1", d.MGs["mg2"].parent.Name)
-	assert.Len(t, d.MGs["mg1"].children, 1)
-	assert.Equal(t, "mg2", d.MGs["mg1"].children[0].Name)
+	assert.Len(t, az.Deployment.MGs, 2)
+	assert.Contains(t, az.Deployment.MGs, "mg2")
+	assert.Equal(t, "mg2", az.Deployment.MGs["mg2"].Name)
+	assert.Equal(t, "mg2", az.Deployment.MGs["mg2"].DisplayName)
+	assert.NotNil(t, az.Deployment.MGs["mg2"].parent)
+	assert.Equal(t, "mg1", az.Deployment.MGs["mg2"].parent.Name)
+	assert.Len(t, az.Deployment.MGs["mg1"].children, 1)
+	assert.Equal(t, "mg2", az.Deployment.MGs["mg1"].children.Members()[0].Name)
 
 	// test adding a new management group with a non-existent parent
-	err = d.AddManagementGroup("mg3", "mg3", "mg4", false, arch)
+	err = az.AddManagementGroupToDeployment("mg3", "mg3", "mg4", false, arch)
 	assert.Error(t, err)
-	assert.Len(t, d.MGs, 2)
-	assert.Contains(t, d.MGs, "mg1")
-	assert.Contains(t, d.MGs, "mg2")
-	assert.NotContains(t, d.MGs, "mg3")
+	assert.Len(t, az.Deployment.MGs, 2)
+	assert.Contains(t, az.Deployment.MGs, "mg1")
+	assert.Contains(t, az.Deployment.MGs, "mg2")
+	assert.NotContains(t, az.Deployment.MGs, "mg3")
 
 	// test adding a new management group with multiple root management groups
-	err = d.AddManagementGroup("mg4", "mg4", "external", true, arch)
+	err = az.AddManagementGroupToDeployment("mg4", "mg4", "external", true, arch)
 	assert.Error(t, err)
-	assert.Len(t, d.MGs, 2)
-	assert.Contains(t, d.MGs, "mg1")
-	assert.Contains(t, d.MGs, "mg2")
-	assert.NotContains(t, d.MGs, "mg4")
+	assert.Len(t, az.Deployment.MGs, 2)
+	assert.Contains(t, az.Deployment.MGs, "mg1")
+	assert.Contains(t, az.Deployment.MGs, "mg2")
+	assert.NotContains(t, az.Deployment.MGs, "mg4")
 
 	// test adding a new management group with an existing name
-	err = d.AddManagementGroup("mg1", "mg1", "external", true, arch)
+	err = az.AddManagementGroupToDeployment("mg1", "mg1", "external", true, arch)
 	assert.Error(t, err)
-	assert.Len(t, d.MGs, 2)
-	assert.Contains(t, d.MGs, "mg1")
-	assert.Contains(t, d.MGs, "mg2")
+	assert.Len(t, az.Deployment.MGs, 2)
+	assert.Contains(t, az.Deployment.MGs, "mg1")
+	assert.Contains(t, az.Deployment.MGs, "mg2")
 }
 
 func TestNewUUID(t *testing.T) {
