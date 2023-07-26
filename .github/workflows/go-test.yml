@@ -45,6 +45,8 @@ jobs:
 
     - run: make test
       name: make test
+      # Tests are run on Linux using make testcover
+      if: matrix.os != 'ubuntu-latest'
 
     - run: make testrace
       name: make testrace
