@@ -1,6 +1,7 @@
 package sets_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/matt-FFFFFF/alzlib/sets"
@@ -39,7 +40,7 @@ func TestSet_Members(t *testing.T) {
 		t.Errorf("Set.Members returned an incorrect number of members")
 	}
 	if members[0] != 1 || members[1] != 2 || members[2] != 3 {
-		t.Errorf("Set.Members returned incorrect members")
+		t.Errorf(fmt.Sprintf("Set.Members returned incorrect members: %v, %v", s, members))
 	}
 }
 
