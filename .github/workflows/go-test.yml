@@ -44,7 +44,6 @@ jobs:
         allow-no-subscriptions: true
 
     - run: make test
-      if: matrix.os != 'ubuntu-latest'
       name: make test
 
     - run: make testrace
