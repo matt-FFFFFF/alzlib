@@ -117,7 +117,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 		switch lastButOneSegment(*defId) {
 		case "policyDefinitions":
 			// check the definition exists in the AlzLib
-			pd, ok := az.PolicyDefinitions[lastSegment(*defId)]
+			pd, ok := az.policyDefinitions[lastSegment(*defId)]
 			if !ok {
 				return fmt.Errorf("policy definition %s not found in AlzLib", lastSegment(*defId))
 			}
@@ -148,7 +148,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 			}
 
 		case "policySetDefinitions":
-			psd, ok := az.PolicySetDefinitions[lastSegment(*defId)]
+			psd, ok := az.policySetDefinitions[lastSegment(*defId)]
 			if !ok {
 				return fmt.Errorf("policy set definition %s not found in AlzLib", lastSegment(*defId))
 			}
@@ -156,7 +156,7 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 			// for each policy definition in the policy set definition
 			for _, pdref := range psd.Properties.PolicyDefinitions {
 				pdName := lastSegment(*pdref.PolicyDefinitionID)
-				pd, ok := az.PolicyDefinitions[pdName]
+				pd, ok := az.policyDefinitions[pdName]
 				if !ok {
 					return fmt.Errorf("policy definition %s, referenced by %s not found in AlzLib", pdName, *psd.Name)
 				}

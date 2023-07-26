@@ -24,7 +24,7 @@ func TestE2E(t *testing.T) {
 		DefaultLocation:                "eastus",
 		DefaultLogAnalyticsWorkspaceId: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.OperationalInsights/workspaces/testlaworkspaceid",
 	}
-	arch := az.Archetypes["root"].WithWellKnownPolicyValues(vals)
+	arch := az.archetypes["root"].WithWellKnownPolicyValues(vals)
 	assert.NoError(t, az.Deployment.AddManagementGroup("root", "root", "external", true, arch))
 	err = az.Deployment.MGs["root"].GeneratePolicyAssignmentAdditionalRoleAssignments(az)
 	assert.NoError(t, err)
@@ -183,12 +183,12 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	alzmg.PolicyAssignments[*paSetDef.Name] = paSetDef
 
 	// add the policy (set) definitions to the alzlib
-	az.PolicyDefinitions[*pd2.Name] = pd2
-	az.PolicyDefinitions[*pd1.Name] = pd1
-	az.PolicySetDefinitions[*ps.Name] = ps
+	az.policyDefinitions[*pd2.Name] = pd2
+	az.policyDefinitions[*pd1.Name] = pd1
+	az.policySetDefinitions[*ps.Name] = ps
 	// add the policy assignments to the arch
-	az.PolicyAssignments[*paDef.Name] = paDef
-	az.PolicyAssignments[*paSetDef.Name] = paSetDef
+	az.policyAssignments[*paDef.Name] = paDef
+	az.policyAssignments[*paSetDef.Name] = paSetDef
 
 	// generate the additional role assignments
 	err := alzmg.GeneratePolicyAssignmentAdditionalRoleAssignments(az)
