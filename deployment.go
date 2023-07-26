@@ -34,6 +34,7 @@ type DeploymentType struct {
 // If the parent is not specified, the management group is considered the root of the hierarchy.
 // You should pass the source Archetype through the .WithWellKnownPolicyParameters() method
 // to ensure that the values in the wellKnownPolicyValues are honored.
+
 func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent string, parentIsExternal bool, arch *Archetype) error {
 	if arch.wellKnownPolicyValues == nil {
 		return errors.New("archetype well known values not set, use Archetype.WithWellKnownPolicyValues() to update")
@@ -51,9 +52,9 @@ func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent strin
 	alzmg.children = sets.NewSet[*AlzManagementGroup]()
 	if parentIsExternal {
 		if _, ok := az.Deployment.MGs[parent]; ok {
+
 			return fmt.Errorf("external parent management group set, but already exists %s", parent)
 		}
-
 		alzmg.parentExternal = to.Ptr[string](parent)
 	}
 	if !parentIsExternal && parent != "" {
