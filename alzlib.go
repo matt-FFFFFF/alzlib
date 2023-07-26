@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/matt-FFFFFF/alzlib/processor"
+	"github.com/matt-FFFFFF/alzlib/sets"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -54,11 +55,12 @@ type AlzLibOptions struct {
 }
 
 // Archetype represents an archetype definition that hasn't been assigned to a management group
+// The contents of the sets represent the map keys of the corresponding AlzLib maps.
 type Archetype struct {
-	PolicyDefinitions     map[string]*armpolicy.Definition
-	PolicyAssignments     map[string]*armpolicy.Assignment
-	PolicySetDefinitions  map[string]*armpolicy.SetDefinition
-	RoleDefinitions       map[string]*armauthorization.RoleDefinition
+	PolicyDefinitions     sets.Set[string]
+	PolicyAssignments     sets.Set[string]
+	PolicySetDefinitions  sets.Set[string]
+	RoleDefinitions       sets.Set[string]
 	wellKnownPolicyValues *WellKnownPolicyValues // options are used to populate the Archetype with well known parameter values
 }
 
@@ -175,14 +177,17 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 	}
 
 	// Get the policy definitions and policy set definitions referenced by the policy assignments
-	assignedPolicyDefinitionIds := make([]string, 0)
+	assignedPolicyDefinitionIds := sets.NewSet[string]()
 	for _, arch := range az.archetypes {
-		for _, pa := range arch.PolicyAssignments {
-			assignedPolicyDefinitionIds = append(assignedPolicyDefinitionIds, *pa.Properties.PolicyDefinitionID)
+		for pa, _ := range arch.PolicyAssignments {
+			if _, exists := az.policyAssignments[pa]; !exists {
+				return fmt.Errorf("policy assignment %s referenced in archetype %s does not exist in the library", pa, arch)
+			}
+			assignedPolicyDefinitionIds.Add(*az.policyAssignments[pa].Properties.PolicyDefinitionID)
 		}
 	}
 
-	if err := az.GetDefinitionsFromAzure(ctx, assignedPolicyDefinitionIds); err != nil {
+	if err := az.GetDefinitionsFromAzure(ctx, assignedPolicyDefinitionIds.Members()); err != nil {
 		return err
 	}
 
@@ -373,34 +378,34 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 			return fmt.Errorf("archetype %s already exists in the library", v.Name)
 		}
 		arch := &Archetype{
-			PolicyDefinitions:    make(map[string]*armpolicy.Definition),
-			PolicyAssignments:    make(map[string]*armpolicy.Assignment),
-			PolicySetDefinitions: make(map[string]*armpolicy.SetDefinition),
-			RoleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
+			PolicyDefinitions:    sets.NewSet[string](),
+			PolicyAssignments:    sets.NewSet[string](),
+			PolicySetDefinitions: sets.NewSet[string](),
+			RoleDefinitions:      sets.NewSet[string](),
 		}
 		for _, pd := range v.PolicyDefinitions {
 			if _, ok := az.policyDefinitions[pd]; !ok {
 				return fmt.Errorf("error processing archetype %s, policy definition %s does not exist in the library", k, pd)
 			}
-			arch.PolicyDefinitions[pd] = az.policyDefinitions[pd]
+			arch.PolicyDefinitions.Add(pd)
 		}
 		for _, psd := range v.PolicySetDefinitions {
 			if _, ok := az.policySetDefinitions[psd]; !ok {
 				return fmt.Errorf("error processing archetype %s, policy set definition %s does not exist in the library", k, psd)
 			}
-			arch.PolicySetDefinitions[psd] = az.policySetDefinitions[psd]
+			arch.PolicySetDefinitions.Add(psd)
 		}
 		for _, pa := range v.PolicyAssignments {
 			if _, ok := az.policyAssignments[pa]; !ok {
 				return fmt.Errorf("error processing archetype %s, policy assignment %s does not exist in the library", k, pa)
 			}
-			arch.PolicyAssignments[pa] = az.policyAssignments[pa]
+			arch.PolicyAssignments.Add(pa)
 		}
 		for _, rd := range v.RoleDefinitions {
 			if _, ok := az.roleDefinitions[rd]; !ok {
 				return fmt.Errorf("error processing archetype %s, role definition %s does not exist in the library", k, rd)
 			}
-			arch.RoleDefinitions[rd] = az.roleDefinitions[rd]
+			arch.RoleDefinitions.Add(rd)
 		}
 		az.archetypes[v.Name] = arch
 	}
@@ -410,24 +415,23 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 // WithWellKnownPolicyValues adds the well known policy parameters to the archetype
 // ready for the caller to further customize, before sending back as a parameter to
 // the Deployment.AddManagementGroup method
-func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) *Archetype {
-	result := new(Archetype)
-	*result = *arch
-	wk := getWellKnownPolicyAssignmentParameterValues(wkpv)
-	for assignmentName, params := range wk {
-		pa, ok := result.PolicyAssignments[assignmentName]
-		if !ok {
-			continue
-		}
-		if pa.Properties.Parameters == nil {
-			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
-		}
-		for param, value := range params {
-			pa.Properties.Parameters[param] = value
-		}
-	}
-	result.wellKnownPolicyValues = wkpv
-	return result
+func (arch *Archetype) WithWellKnownPolicyValues(wkpv *WellKnownPolicyValues) {
+	// result := new(Archetype)
+	// *result = *arch
+	// wk := getWellKnownPolicyAssignmentParameterValues(wkpv)
+	// for assignmentName, params := range wk {
+	// 	pa, ok := result.PolicyAssignments[assignmentName]
+	// 	if !ok {
+	// 		continue
+	// 	}
+	// 	if pa.Properties.Parameters == nil {
+	// 		pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
+	// 	}
+	// 	for param, value := range params {
+	// 		pa.Properties.Parameters[param] = value
+	// 	}
+	// }
+	arch.wellKnownPolicyValues = wkpv
 }
 
 // lastSegment returns the last segment of a string separated by "/"
