@@ -24,8 +24,9 @@ func TestE2E(t *testing.T) {
 		DefaultLocation:                "eastus",
 		DefaultLogAnalyticsWorkspaceId: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.OperationalInsights/workspaces/testlaworkspaceid",
 	}
-	arch := az.Archetypes["root"].WithWellKnownPolicyValues(vals)
-	assert.NoError(t, az.Deployment.AddManagementGroup("root", "root", "external", true, arch))
+	arch, err := az.CopyArchetype("root", vals)
+	assert.NoError(t, err)
+	assert.NoError(t, az.AddManagementGroupToDeployment("root", "root", "external", true, arch))
 	err = az.Deployment.MGs["root"].GeneratePolicyAssignmentAdditionalRoleAssignments(az)
 	assert.NoError(t, err)
 }
@@ -183,12 +184,12 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	alzmg.PolicyAssignments[*paSetDef.Name] = paSetDef
 
 	// add the policy (set) definitions to the alzlib
-	az.PolicyDefinitions[*pd2.Name] = pd2
-	az.PolicyDefinitions[*pd1.Name] = pd1
-	az.PolicySetDefinitions[*ps.Name] = ps
+	az.policyDefinitions[*pd2.Name] = pd2
+	az.policyDefinitions[*pd1.Name] = pd1
+	az.policySetDefinitions[*ps.Name] = ps
 	// add the policy assignments to the arch
-	az.PolicyAssignments[*paDef.Name] = paDef
-	az.PolicyAssignments[*paSetDef.Name] = paSetDef
+	az.policyAssignments[*paDef.Name] = paDef
+	az.policyAssignments[*paSetDef.Name] = paSetDef
 
 	// generate the additional role assignments
 	err := alzmg.GeneratePolicyAssignmentAdditionalRoleAssignments(az)
@@ -199,12 +200,12 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	// check that the additional role assignments were generated correctly
 	additionalRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paDef.Name]
 	assert.True(t, ok)
-	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition"}, additionalRas.RoleDefinitionIds)
-	assert.Equal(t, []string{paDef.Properties.Parameters["parameter1"].Value.(string)}, additionalRas.AdditionalScopes)
+	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition"}, additionalRas.RoleDefinitionIds.Members())
+	assert.Equal(t, []string{paDef.Properties.Parameters["parameter1"].Value.(string)}, additionalRas.AdditionalScopes.Members())
 	additionalSetRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paSetDef.Name]
 	assert.True(t, ok)
-	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds)
-	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes)
+	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds.Members())
+	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes.Members())
 }
 
 func TestExtractParameterNameFromArmFunction(t *testing.T) {
