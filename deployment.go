@@ -4,7 +4,6 @@
 package alzlib
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/google/uuid"
-	"github.com/matt-FFFFFF/alzlib/sets"
 	"github.com/matt-FFFFFF/alzlib/to"
 )
 
@@ -24,118 +22,10 @@ const (
 	roleDefinitionIdFmt      = "/providers/Microsoft.Management/managementGroups/%s/providers/Microsoft.Authorization/roleDefinitions/%s"
 )
 
-// DeploymentType represents a deployment of Azure management group
+// DeploymentType represents a deployment of Azure management group.
 type DeploymentType struct {
 	MGs map[string]*AlzManagementGroup
 	mu  sync.RWMutex
-}
-
-// AddManagementGroupToDeployment adds a management group to the deployment, with a parent if specified.
-// If the parent is not specified, the management group is considered the root of the hierarchy.
-// You should pass the source Archetype through the .WithWellKnownPolicyParameters() method
-// to ensure that the values in the wellKnownPolicyValues are honored.
-
-func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent string, parentIsExternal bool, arch *Archetype) error {
-	if arch.wellKnownPolicyValues == nil {
-		return errors.New("archetype well known values not set, use Archetype.WithWellKnownPolicyValues() to update")
-	}
-
-	az.Deployment.mu.Lock()
-	defer az.Deployment.mu.Unlock()
-	if _, exists := az.Deployment.MGs[name]; exists {
-		return fmt.Errorf("management group %s already exists", name)
-	}
-	alzmg := newAlzManagementGroup()
-
-	alzmg.Name = name
-	alzmg.DisplayName = displayName
-	alzmg.children = sets.NewSet[*AlzManagementGroup]()
-	if parentIsExternal {
-		if _, ok := az.Deployment.MGs[parent]; ok {
-
-			return fmt.Errorf("external parent management group set, but already exists %s", parent)
-		}
-		alzmg.parentExternal = to.Ptr[string](parent)
-	}
-	if !parentIsExternal && parent != "" {
-		mg, ok := az.Deployment.MGs[parent]
-		if !ok {
-			return fmt.Errorf("parent management group not found %s", parent)
-		}
-		alzmg.parent = mg
-		az.Deployment.MGs[parent].children.Add(alzmg)
-	}
-
-	// We only allow one intermediate root management group, so check if this is the first one
-	if parentIsExternal {
-		for mgname, mg := range az.Deployment.MGs {
-			if mg.parentExternal != nil {
-				return fmt.Errorf("multiple root management groups: %s and %s", mgname, name)
-			}
-		}
-	}
-
-	// make copies of the archetype resources for modification in the Deployment management group
-	for _, name := range arch.PolicyDefinitions.Members() {
-		newdef := new(armpolicy.Definition)
-		*newdef = *az.policyDefinitions[name]
-		alzmg.PolicyDefinitions[name] = newdef
-	}
-	for _, name := range arch.PolicySetDefinitions.Members() {
-		newdef := new(armpolicy.SetDefinition)
-		*newdef = *az.policySetDefinitions[name]
-		alzmg.PolicySetDefinitions[name] = newdef
-	}
-	for _, name := range arch.PolicyAssignments.Members() {
-		newpolassign := new(armpolicy.Assignment)
-		*newpolassign = *az.policyAssignments[name]
-		alzmg.PolicyAssignments[name] = newpolassign
-	}
-	for _, name := range arch.RoleDefinitions.Members() {
-		newroledef := new(armauthorization.RoleDefinition)
-		*newroledef = *az.roleDefinitions[name]
-		alzmg.RoleDefinitions[name] = newroledef
-	}
-
-	// add the management group to the deployment
-	az.Deployment.MGs[name] = alzmg
-
-	// process the well known policy parameter values
-	wk := getWellKnownPolicyAssignmentParameterValues(arch.wellKnownPolicyValues)
-	for assignmentName, params := range wk {
-		pa, ok := alzmg.PolicyAssignments[assignmentName]
-		if !ok {
-			continue
-		}
-		if pa.Properties.Parameters == nil {
-			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
-		}
-		for param, value := range params {
-			pa.Properties.Parameters[param] = value
-		}
-	}
-
-	pd2mg := az.Deployment.policyDefinitionToMg()
-	psd2mg := az.Deployment.policySetDefinitionToMg()
-
-	// re-write the policy definition ID property to be the current MG name
-	modifyPolicyDefinitions(alzmg)
-
-	// re-write the policy set definition ID property and go through the referenced definitions
-	// and write the defintion id if it's custom
-	modifyPolicySetDefinitions(alzmg, pd2mg)
-
-	// re-write the policy assignment ID property to be the current MG name
-	// and go through the referenced definitions and write the definition id if it's custom
-	// and set the location property to the default location if it's not nil
-	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, arch.wellKnownPolicyValues); err != nil {
-		return err
-	}
-
-	// re-write the assignableScopes for the role definitions
-	modifyRoleDefinitions(alzmg)
-
-	return nil
 }
 
 func (d *DeploymentType) policyDefinitionToMg() map[string]string {
@@ -181,16 +71,32 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 	}
 }
 
-func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, opts *WellKnownPolicyValues) error {
+func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, wkpv *WellKnownPolicyValues) error {
+	// Update well known policy assignment parameters.
+	wk := getWellKnownPolicyAssignmentParameterValues(wkpv)
+	for assignmentName, params := range wk {
+		pa, ok := alzmg.PolicyAssignments[assignmentName]
+		if !ok {
+			continue
+		}
+		if pa.Properties.Parameters == nil {
+			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
+		}
+		for param, value := range params {
+			pa.Properties.Parameters[param] = value
+		}
+	}
+
+	// Update resource ids and refs.
 	for assignmentName, assignment := range alzmg.PolicyAssignments {
 		assignment.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.Name, assignmentName))
 		assignment.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.Name))
 		if assignment.Location != nil {
-			assignment.Location = to.Ptr(opts.DefaultLocation)
+			assignment.Location = to.Ptr(wkpv.DefaultLocation)
 		}
 
 		// rewrite the referenced policy definition id
-		// if the policy definition is in the list
+		// if the policy definition is in the list.
 		pd := assignment.Properties.PolicyDefinitionID
 		switch lastButOneSegment(*pd) {
 		case "policyDefinitions":

@@ -3,51 +3,52 @@ package alzlib
 import "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 
 // policyAssignmentsParameterValues represents the values for well-known policy assignment parameters.
-// The first map key is the assignment name, the second is the parameter name, and the value is the parameter value
+// The first map key is the assignment name, the second is the parameter name, and the value is the parameter value.
 type policyAssignmentsParameterValues map[string]map[string]*armpolicy.ParameterValuesValue
 
-// getWellKnownPolicyAssignmentParameterValues is used by the *Archetype.WithWellKnownPolicyValues() method to set the values for well-known policy assignment parameters.
-func getWellKnownPolicyAssignmentParameterValues(opts *WellKnownPolicyValues) policyAssignmentsParameterValues {
+// getWellKnownPolicyAssignmentParameterValues is used by the *Archetype.WithWellKnownPolicyValues() method to
+// set the values for well-known policy assignment parameters.
+func getWellKnownPolicyAssignmentParameterValues(wkpv *WellKnownPolicyValues) policyAssignmentsParameterValues {
 	return policyAssignmentsParameterValues{
 		"Deploy-AzActivity-Log": {
 			"logAnalytics": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 		},
 		"Deploy-AzSqlDb-Auditing": {
 			"logAnalyticsWorkspaceId": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 		},
 		"Deploy-Log-Analytics": {
 			"workspaceRegion": {
-				Value: opts.DefaultLocation,
+				Value: wkpv.DefaultLocation,
 			},
 			"automationRegion": {
-				Value: opts.DefaultLocation,
+				Value: wkpv.DefaultLocation,
 			},
 		},
 		"Deploy-MDFC-Config": {
 			"logAnalytics": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 			"ascExportResourceGroupLocation": {
-				Value: opts.DefaultLocation,
+				Value: wkpv.DefaultLocation,
 			},
 		},
 		"Deploy-Resource-Diag": {
 			"logAnalytics": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 		},
 		"Deploy-VM-Monitoring": {
 			"logAnalytics_1": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 		},
 		"Deploy-VMSS-Monitoring": {
 			"logAnalytics_1": {
-				Value: opts.DefaultLogAnalyticsWorkspaceId,
+				Value: wkpv.DefaultLogAnalyticsWorkspaceId,
 			},
 		},
 	}

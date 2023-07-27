@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-// package processor is used to process the library files
+// package processor is used to process the library files.
 package processor
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 )
 
-// These are the file prefixes for the resource types
+// These are the file prefixes for the resource types.
 const (
 	archetypeDefinitionPrefix = "archetype_definition_"
 	policyAssignmentPrefix    = "policy_assignment_"
@@ -23,7 +23,7 @@ const (
 	roleDefinitionPrefix      = "role_definition_"
 )
 
-// Result is the structure that gets built by scanning the library files
+// Result is the structure that gets built by scanning the library files.
 type Result struct {
 	PolicyDefinitions    map[string]*armpolicy.Definition
 	PolicySetDefinitions map[string]*armpolicy.SetDefinition
@@ -33,7 +33,7 @@ type Result struct {
 }
 
 // LibArchetype represents an archetype definition file,
-// it used to construct the Archetype struct and is then added to the AlzLib struct
+// it used to construct the Archetype struct and is then added to the AlzLib struct.
 type LibArchetype struct {
 	Name                 string   `json:"name"`
 	PolicyAssignments    []string `json:"policy_assignments"`
@@ -42,10 +42,10 @@ type LibArchetype struct {
 	RoleDefinitions      []string `json:"role_definitions"`
 }
 
-// processFunc is the function signature that is used to process different types of lib file
+// processFunc is the function signature that is used to process different types of lib file.
 type processFunc func(result *Result, data []byte) error
 
-// ProcessorClient is the client that is used to process the library files
+// ProcessorClient is the client that is used to process the library files.
 type ProcessorClient struct {
 	fs fs.FS
 }
@@ -83,7 +83,7 @@ func (client *ProcessorClient) Process(res *Result) error {
 	return nil
 }
 
-// classifyLibFile identifies the supplied file and adds calls the appropriate processFunc
+// classifyLibFile identifies the supplied file and adds calls the appropriate processFunc.
 func classifyLibFile(res *Result, file fs.File, name string) error {
 	err := error(nil)
 	// process by file type
@@ -117,7 +117,7 @@ func classifyLibFile(res *Result, file fs.File, name string) error {
 }
 
 // processArchetype is a processFunc that reads the archetype_definition
-// bytes, processes, then adds the created LibArchetypeDefinition to the AlzLib
+// bytes, processes, then adds the created LibArchetypeDefinition to the AlzLib.
 func processArchetype(res *Result, data []byte) error {
 	la := new(LibArchetype)
 	if err := json.Unmarshal(data, la); err != nil {
@@ -131,7 +131,7 @@ func processArchetype(res *Result, data []byte) error {
 }
 
 // processPolicyAssignment is a processFunc that reads the policy_assignment
-// bytes, processes, then adds the created armpolicy.Assignment to the AlzLib
+// bytes, processes, then adds the created armpolicy.Assignment to the AlzLib.
 func processPolicyAssignment(res *Result, data []byte) error {
 	pa := new(armpolicy.Assignment)
 	if err := json.Unmarshal(data, pa); err != nil {
@@ -148,7 +148,7 @@ func processPolicyAssignment(res *Result, data []byte) error {
 }
 
 // processPolicyAssignment is a processFunc that reads the policy_definition
-// bytes, processes, then adds the created armpolicy.Definition to the AlzLib
+// bytes, processes, then adds the created armpolicy.Definition to the AlzLib.
 func processPolicyDefinition(res *Result, data []byte) error {
 	pd := new(armpolicy.Definition)
 	if err := json.Unmarshal(data, pd); err != nil {
@@ -165,7 +165,7 @@ func processPolicyDefinition(res *Result, data []byte) error {
 }
 
 // processPolicyAssignment is a processFunc that reads the policy_set_definition
-// bytes, processes, then adds the created armpolicy.SetDefinition to the AlzLib
+// bytes, processes, then adds the created armpolicy.SetDefinition to the AlzLib.
 func processPolicySetDefinition(res *Result, data []byte) error {
 	psd := new(armpolicy.SetDefinition)
 	if err := json.Unmarshal(data, psd); err != nil {
@@ -197,7 +197,7 @@ func processRoleDefinition(res *Result, data []byte) error {
 	return nil
 }
 
-// readAndProcessFile reads the file bytes at the supplied path and processes it using the supplied processFunc
+// readAndProcessFile reads the file bytes at the supplied path and processes it using the supplied processFunc.
 func readAndProcessFile(res *Result, file fs.File, processFn processFunc) error {
 	s, err := file.Stat()
 	if err != nil {

@@ -13,10 +13,10 @@ import (
 func TestPtr(t *testing.T) {
 	b := true
 	pb := Ptr(b)
-	if pb == nil {
+	if pb == nil { //nolint:staticcheck
 		t.Fatal("unexpected nil conversion")
 	}
-	if *pb != b {
+	if *pb != b { //nolint:staticcheck
 		t.Fatalf("got %v, want %v", *pb, b)
 	}
 }

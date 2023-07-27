@@ -55,7 +55,7 @@ func (alzmg *AlzManagementGroup) GetParentId() string {
 }
 
 // GetParentMg returns parent *AlzManagementGroup.
-// If the parent is external, the result will be nil
+// If the parent is external, the result will be nil.
 func (alzmg *AlzManagementGroup) GetParentMg() *AlzManagementGroup {
 	if alzmg.parentExternal != nil {
 		return nil
@@ -208,12 +208,36 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 	return nil
 }
 
+// Update will update the AlzManagementGroup resources with the correct resource ids, references, etc.
+func (alzmg *AlzManagementGroup) Update(az *AlzLib, wkpv *WellKnownPolicyValues) error {
+	pd2mg := az.Deployment.policyDefinitionToMg()
+	psd2mg := az.Deployment.policySetDefinitionToMg()
+
+	// re-write the policy definition ID property to be the current MG name.
+	modifyPolicyDefinitions(alzmg)
+
+	// re-write the policy set definition ID property and go through the referenced definitions
+	// and write the definition id if it's custom.
+	modifyPolicySetDefinitions(alzmg, pd2mg)
+
+	// re-write the policy assignment ID property to be the current MG name
+	// and go through the referenced definitions and write the definition id if it's custom
+	// and set the well known parameters.
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, wkpv); err != nil {
+		return err
+	}
+
+	// re-write the assignableScopes for the role definitions.
+	modifyRoleDefinitions(alzmg)
+	return nil
+}
+
 func (alzmg *AlzManagementGroup) GetResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
 }
 
 func extractParameterNameFromArmFunction(value string) (string, error) {
-	// value is of the form "[parameters('parameterName')]"
+	// value is of the form "[parameters('parameterName')]".
 	if !strings.HasPrefix(value, "[parameters('") || !strings.HasSuffix(value, "')]") {
 		return "", fmt.Errorf("value is not a parameter reference")
 	}
@@ -222,7 +246,7 @@ func extractParameterNameFromArmFunction(value string) (string, error) {
 
 // getPolicyDefRoleDefinitionIds returns the role definition ids referenced in a policy definition
 // if they exist.
-// We marshall the policyRule as JSON and then unmarshal into a custom type
+// We marshall the policyRule as JSON and then unmarshal into a custom type.
 func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
 	j, err := json.Marshal(rule)
 	if err != nil {

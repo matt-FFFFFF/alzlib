@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/matt-FFFFFF/alzlib/processor"
 	"github.com/matt-FFFFFF/alzlib/sets"
+	"github.com/matt-FFFFFF/alzlib/to"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,7 +24,7 @@ const (
 	defaultParallelism = 10 // default number of parallel requests to make to Azure APIs
 )
 
-// Embed the Lib dir into the binary
+// Embed the Lib dir into the binary.
 //
 //go:embed lib
 var Lib embed.FS
@@ -164,12 +165,12 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 			return fmt.Errorf("error processing library %v: %w", lib, err)
 		}
 
-		// Put results into the AlzLib
+		// Put results into the AlzLib.
 		if err := az.addProcessedResult(res); err != nil {
 			return err
 		}
 
-		// Generate archetypes from the first library
+		// Generate archetypes from the first library.
 		if i == 0 {
 			if err := az.generateArchetypes(res); err != nil {
 				return err
@@ -177,7 +178,7 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 		}
 	}
 
-	// Get the policy definitions and policy set definitions referenced by the policy assignments
+	// Get the policy definitions and policy set definitions referenced by the policy assignments.
 	assignedPolicyDefinitionIds := sets.NewSet[string]()
 	for archname, arch := range az.archetypes {
 		for pa := range arch.PolicyAssignments {
@@ -189,6 +190,83 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 	}
 
 	if err := az.GetDefinitionsFromAzure(ctx, assignedPolicyDefinitionIds.Members()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddManagementGroupToDeployment adds a management group to the deployment, with a parent if specified.
+// If the parent is not specified, the management group is considered the root of the hierarchy.
+// You should pass the source Archetype through the .WithWellKnownPolicyParameters() method
+// to ensure that the values in the wellKnownPolicyValues are honored.
+func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent string, parentIsExternal bool, arch *Archetype) error {
+	if arch.wellKnownPolicyValues == nil {
+		return errors.New("archetype well known values not set, use Archetype.WithWellKnownPolicyValues() to update")
+	}
+
+	az.Deployment.mu.Lock()
+	defer az.Deployment.mu.Unlock()
+	if _, exists := az.Deployment.MGs[name]; exists {
+		return fmt.Errorf("management group %s already exists", name)
+	}
+	alzmg := newAlzManagementGroup()
+
+	alzmg.Name = name
+	alzmg.DisplayName = displayName
+	alzmg.children = sets.NewSet[*AlzManagementGroup]()
+	if parentIsExternal {
+		if _, ok := az.Deployment.MGs[parent]; ok {
+
+			return fmt.Errorf("external parent management group set, but already exists %s", parent)
+		}
+		alzmg.parentExternal = to.Ptr[string](parent)
+	}
+	if !parentIsExternal && parent != "" {
+		mg, ok := az.Deployment.MGs[parent]
+		if !ok {
+			return fmt.Errorf("parent management group not found %s", parent)
+		}
+		alzmg.parent = mg
+		az.Deployment.MGs[parent].children.Add(alzmg)
+	}
+
+	// We only allow one intermediate root management group, so check if this is the first one.
+	if parentIsExternal {
+		for mgname, mg := range az.Deployment.MGs {
+			if mg.parentExternal != nil {
+				return fmt.Errorf("multiple root management groups: %s and %s", mgname, name)
+			}
+		}
+	}
+
+	// make copies of the archetype resources for modification in the Deployment management group.
+	for _, name := range arch.PolicyDefinitions.Members() {
+		newdef := new(armpolicy.Definition)
+		*newdef = *az.policyDefinitions[name]
+		alzmg.PolicyDefinitions[name] = newdef
+	}
+	for _, name := range arch.PolicySetDefinitions.Members() {
+		newdef := new(armpolicy.SetDefinition)
+		*newdef = *az.policySetDefinitions[name]
+		alzmg.PolicySetDefinitions[name] = newdef
+	}
+	for _, name := range arch.PolicyAssignments.Members() {
+		newpolassign := new(armpolicy.Assignment)
+		*newpolassign = *az.policyAssignments[name]
+		alzmg.PolicyAssignments[name] = newpolassign
+	}
+	for _, name := range arch.RoleDefinitions.Members() {
+		newroledef := new(armauthorization.RoleDefinition)
+		*newroledef = *az.roleDefinitions[name]
+		alzmg.RoleDefinitions[name] = newroledef
+	}
+
+	// add the management group to the deployment.
+	az.Deployment.MGs[name] = alzmg
+
+	// run Update to change all refs, etc.
+	if err := az.Deployment.MGs[name].Update(az, arch.wellKnownPolicyValues); err != nil {
 		return err
 	}
 
@@ -209,7 +287,7 @@ func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) err
 			}
 		case "policysetdefinitions":
 			// If the set is not present, OR if the set contains referenced definitions that are not present
-			// add it to the list of set defs to get
+			// add it to the list of set defs to get.
 			psd, exists := az.policySetDefinitions[lastSegment(pd)]
 			if exists {
 				for _, ref := range psd.Properties.PolicyDefinitions {
@@ -285,7 +363,7 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 	grp.SetLimit(az.Options.Parallelism)
 
 	// We need to keep track of the names we've processed
-	// so that we can get the policy definitions referenced within them
+	// so that we can get the policy definitions referenced within them.
 	processedNames := make([]string, 0, len(names))
 	var mu sync.Mutex
 
@@ -302,9 +380,9 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 			if err != nil {
 				return err
 			}
-			// Add set definition to the AlzLib
+			// Add set definition to the AlzLib.
 			az.policySetDefinitions[name] = &resp.SetDefinition
-			// Add name to processedNames
+			// Add name to processedNames.
 			mu.Lock()
 			defer mu.Unlock()
 			processedNames = append(processedNames, name)
@@ -315,7 +393,7 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 		return err
 	}
 
-	// Get the policy definitions for newly added policy set definitions
+	// Get the policy definitions for newly added policy set definitions.
 	defnames := make([]string, 0)
 	for _, name := range names {
 		name := name
@@ -330,7 +408,7 @@ func (az *AlzLib) GetBuiltInPolicySets(ctx context.Context, names []string) erro
 	return nil
 }
 
-// addProcessedResult adds the results of a processed library to the AlzLib
+// addProcessedResult adds the results of a processed library to the AlzLib.
 func (az *AlzLib) addProcessedResult(res *processor.Result) error {
 	for k, v := range res.PolicyDefinitions {
 		if _, exists := az.policyDefinitions[k]; exists && !az.Options.AllowOverwrite {
@@ -362,7 +440,7 @@ func (az *AlzLib) addProcessedResult(res *processor.Result) error {
 // generateArchetypes generates the archetypes from the result of the processor.
 // The archetypes are stored in the AlzLib instance.
 func (az *AlzLib) generateArchetypes(res *processor.Result) error {
-	// add empty archetype if it doesn't exist
+	// add empty archetype if it doesn't exist.
 	if _, exists := res.LibArchetypes["empty"]; !exists {
 		res.LibArchetypes["empty"] = &processor.LibArchetype{
 			Name:                 "empty",
@@ -373,7 +451,7 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 		}
 	}
 
-	// generate alzlib archetypes
+	// generate alzlib archetypes.
 	for k, v := range res.LibArchetypes {
 		if _, exists := az.archetypes[k]; exists {
 			return fmt.Errorf("archetype %s already exists in the library", v.Name)
@@ -413,7 +491,7 @@ func (az *AlzLib) generateArchetypes(res *processor.Result) error {
 	return nil
 }
 
-// lastSegment returns the last segment of a string separated by "/"
+// lastSegment returns the last segment of a string separated by "/".
 func lastSegment(s string) string {
 	parts := strings.Split(s, "/")
 	if len(parts) <= 1 {
@@ -422,7 +500,7 @@ func lastSegment(s string) string {
 	return parts[len(parts)-1]
 }
 
-// lastButOneSegment returns the last but one segment of a string separated by "/"
+// lastButOneSegment returns the last but one segment of a string separated by "/".
 func lastButOneSegment(s string) string {
 	parts := strings.Split(s, "/")
 	if len(parts) <= 2 {

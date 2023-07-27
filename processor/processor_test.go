@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestFullLibrary
+// TestFullLibrary.
 func TestFullLibrary(t *testing.T) {
 	t.Parallel()
 	fs := os.DirFS("./testdata")
@@ -24,7 +24,7 @@ func TestFullLibrary(t *testing.T) {
 	assert.Equal(t, len(res.LibArchetypes["root"].RoleDefinitions), 5)
 }
 
-// TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition
+// TestProcessArchetypeDefinitionValid test the processing of a valid archetype definition.
 func TestProcessArchetypeDefinitionValid(t *testing.T) {
 	t.Parallel()
 	sampleData := getSampleArchetypeDefinition_valid()
@@ -41,7 +41,7 @@ func TestProcessArchetypeDefinitionValid(t *testing.T) {
 }
 
 // TestProcessArchetypeDefinition_multipleTopLevelObjects tests that the correct error
-// is generated when there as JSON errors in the archetype definition
+// is generated when there as JSON errors in the archetype definition.
 func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
 	t.Parallel()
 	sampleData := getSampleArchetypeDefinition_invalidJson()
@@ -52,7 +52,7 @@ func Test_processArchetypeDefinition_invalidJson(t *testing.T) {
 	assert.ErrorContains(t, processArchetype(res, sampleData), "invalid character '[' after object key")
 }
 
-// TestProcessPolicyAssignmentValid tests the processing of a valid policy assignment
+// TestProcessPolicyAssignmentValid tests the processing of a valid policy assignment.
 func TestProcessPolicyAssignmentValid(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicyAssignment()
@@ -67,7 +67,7 @@ func TestProcessPolicyAssignmentValid(t *testing.T) {
 }
 
 // TestProcessPolicyAssignmentNoName tests that the processing of a assignment
-// with a missing name field throws the correct error
+// with a missing name field throws the correct error.
 func TestProcessPolicyAssignmentNoName(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicyAssignment_noName()
@@ -77,7 +77,7 @@ func TestProcessPolicyAssignmentNoName(t *testing.T) {
 	assert.ErrorContains(t, processPolicyAssignment(res, sampleData), "policy assignment name is empty or not present")
 }
 
-// TestProcessPolicyDefinitionValid tests the processing of a valid policy definition
+// TestProcessPolicyDefinitionValid tests the processing of a valid policy definition.
 func TestProcessPolicyDefinitionValid(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicyDefinition()
@@ -91,7 +91,7 @@ func TestProcessPolicyDefinitionValid(t *testing.T) {
 }
 
 // TestProcessPolicyDefinitionNoName tests that the processing of a definition
-// with a missing name field throws the correct error
+// with a missing name field throws the correct error.
 func TestProcessPolicyDefinitionNoName(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicyDefinition_noName()
@@ -101,7 +101,7 @@ func TestProcessPolicyDefinitionNoName(t *testing.T) {
 	assert.ErrorContains(t, processPolicyDefinition(res, sampleData), "policy definition name is empty or not present")
 }
 
-// TestProcessSetPolicyDefinitionValid tests the processing of a valid policy set definition
+// TestProcessSetPolicyDefinitionValid tests the processing of a valid policy set definition.
 func TestProcessSetPolicyDefinitionValid(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicySetDefinition()
@@ -116,7 +116,7 @@ func TestProcessSetPolicyDefinitionValid(t *testing.T) {
 }
 
 // TestProcessPolicySetDefinitionNoName tests that the processing of a set definition
-// with a missing name field throws the correct error
+// with a missing name field throws the correct error.
 func TestProcessPolicySetDefinitionNoName(t *testing.T) {
 	t.Parallel()
 	sampleData := getSamplePolicySetDefinition_noName()
@@ -127,34 +127,28 @@ func TestProcessPolicySetDefinitionNoName(t *testing.T) {
 	assert.ErrorContains(t, processPolicySetDefinition(res, sampleData), "policy set definition name is empty or not present")
 }
 
-// TestProcessPolicyAssignmentNoData tests the processing of an invalid policy assignment with no data
+// TestProcessPolicyAssignmentNoData tests the processing of an invalid policy assignment with no data.
 func TestProcessPolicyAssignmentNoData(t *testing.T) {
 	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicyAssignment(res, make([]byte, 0)), "error unmarshalling policy assignment")
 }
 
-// TestProcessPolicyDefinitionNoData tests the processing of an invalid policy definition with no data
+// TestProcessPolicyDefinitionNoData tests the processing of an invalid policy definition with no data.
 func TestProcessPolicyDefinitionNoData(t *testing.T) {
 	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicyDefinition(res, make([]byte, 0)), "error unmarshalling policy definition")
 }
 
-// TestProcessSetPolicyDefinitionNoData tests the processing of an invalid policy set definition with no data
+// TestProcessSetPolicyDefinitionNoData tests the processing of an invalid policy set definition with no data.
 func TestProcessPolicySetDefinitionNoData(t *testing.T) {
 	t.Parallel()
 	res := &Result{}
 	assert.ErrorContains(t, processPolicySetDefinition(res, make([]byte, 0)), "error unmarshalling policy set definition")
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-// Below are helper functions for the above tests
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-// getSampleArchetypeDefinition_valid returns a valid archetype definition
+// getSampleArchetypeDefinition_valid returns a valid archetype definition.
 func getSampleArchetypeDefinition_valid() []byte {
 	return []byte(`{
 	"name": "test",
@@ -175,7 +169,7 @@ func getSampleArchetypeDefinition_valid() []byte {
 }
 
 // getSampleArchetypeDefinition_invalidJson returns an invalid JSON byte slice
-// There is a missing colon after the policy_set_definitions key
+// There is a missing colon after the policy_set_definitions key.
 func getSampleArchetypeDefinition_invalidJson() []byte {
 	return []byte(`{
 		"es_root": {
@@ -190,7 +184,7 @@ func getSampleArchetypeDefinition_invalidJson() []byte {
 	}`)
 }
 
-// getSamplePolicyAssignment returns a valid policy assignment as a byte slice
+// getSamplePolicyAssignment returns a valid policy assignment as a byte slice.
 func getSamplePolicyAssignment() []byte {
 	return []byte(`{
 		"name": "Deny-Storage-http",
@@ -213,7 +207,7 @@ func getSamplePolicyAssignment() []byte {
 }
 
 // getSamplePolicyAssignment_noName returns a policy assignment with no name as a byte slice
-// the name field is missing, rather than empty
+// the name field is missing, rather than empty.
 func getSamplePolicyAssignment_noName() []byte {
 	return []byte(`{
 		"type": "Microsoft.Authorization/policyAssignments",
@@ -234,7 +228,7 @@ func getSamplePolicyAssignment_noName() []byte {
 	}`)
 }
 
-// getSamplePolicyDefinition returns a valid policy definition as a byte slice
+// getSamplePolicyDefinition returns a valid policy definition as a byte slice.
 func getSamplePolicyDefinition() []byte {
 	return []byte(`{
 		"name": "Append-AppService-httpsonly",
@@ -292,7 +286,7 @@ func getSamplePolicyDefinition() []byte {
 }
 
 // getSamplePolicyDefinition_noName returns a policy definition with no name as a byte slice
-// the name field is empty, rather than missing
+// the name field is empty, rather than missing.
 func getSamplePolicyDefinition_noName() []byte {
 	return []byte(`{
 		"name": "",
@@ -349,7 +343,7 @@ func getSamplePolicyDefinition_noName() []byte {
 	}`)
 }
 
-// getSamplePolicySetDefinition returns a valid policy set definition as a byte slice
+// getSamplePolicySetDefinition returns a valid policy set definition as a byte slice.
 func getSamplePolicySetDefinition() []byte {
 	return []byte(`{
 		"name": "Deploy-MDFC-Config",
@@ -599,7 +593,7 @@ func getSamplePolicySetDefinition() []byte {
 }
 
 // getSamplePolicySetDefinition_noName returns a policy set definition with no name as a byte slice
-// the name field is missing, rather than empty
+// the name field is missing, rather than empty.
 func getSamplePolicySetDefinition_noName() []byte {
 	return []byte(`{
 		"type": "Microsoft.Authorization/policySetDefinitions",
