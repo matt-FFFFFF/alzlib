@@ -40,7 +40,7 @@ func TestSet_Members(t *testing.T) {
 	if len(members) != 3 {
 		t.Errorf("Set.Members returned an incorrect number of members")
 	}
-	if !slices.Contains(members, 1) && !slices.Contains(members, 2) && !slices.Contains(members, 3) {
+	if !slices.Contains(members, 1) || !slices.Contains(members, 2) || !slices.Contains(members, 3) {
 		t.Errorf(fmt.Sprintf("Set.Members returned incorrect members: %v, %v", s, members))
 	}
 }
