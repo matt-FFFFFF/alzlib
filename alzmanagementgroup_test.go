@@ -33,10 +33,10 @@ func TestE2E(t *testing.T) {
 
 func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 	t.Parallel()
-	// create a new AlzLib instance
+	// create a new AlzLib instance.
 	az := NewAlzLib()
 
-	// create a new AlzManagementGroup instance
+	// create a new AlzManagementGroup instance.
 	alzmg := &AlzManagementGroup{
 		AdditionalRoleAssignmentsByPolicyAssignment: make(map[string]*PolicyAssignmentAdditionalRoleAssignments),
 		PolicyDefinitions:    make(map[string]*armpolicy.Definition),
@@ -44,7 +44,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		PolicyAssignments:    make(map[string]*armpolicy.Assignment),
 	}
 
-	// create a new policy assignment for the definition
+	// create a new policy assignment for the definition.
 	paDef := &armpolicy.Assignment{
 		Name: to.Ptr("test-policy-assignment"),
 		Type: to.Ptr("Microsoft.Authorization/policyAssignments"),
@@ -59,7 +59,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		},
 	}
 
-	// create a new policy assignment for the definition
+	// create a new policy assignment for the definition.
 	paSetDef := &armpolicy.Assignment{
 		Name: to.Ptr("test-policy-set-assignment"),
 		Type: to.Ptr("Microsoft.Authorization/policyAssignments"),
@@ -98,7 +98,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		},
 	}
 
-	// create a new policy definition for direct assignment
+	// create a new policy definition for direct assignment.
 	pd1 := &armpolicy.Definition{
 		Name: to.Ptr("test-policy-definition"),
 		Properties: &armpolicy.DefinitionProperties{
@@ -136,7 +136,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		},
 	}
 
-	// create a new policy definition for set assignment
+	// create a new policy definition for set assignment.
 	pd2 := &armpolicy.Definition{
 		Name: to.Ptr("test-policy-definition2"),
 		Properties: &armpolicy.DefinitionProperties{
@@ -174,60 +174,60 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		},
 	}
 
-	// add the policy (set) definitions to the arch
+	// add the policy (set) definitions to the arch.
 	alzmg.PolicyDefinitions[*pd1.Name] = pd1
 	alzmg.PolicyDefinitions[*pd2.Name] = pd2
 	alzmg.PolicySetDefinitions[*ps.Name] = ps
 
-	// add the policy assignments to the arch
+	// add the policy assignments to the arch.
 	alzmg.PolicyAssignments[*paDef.Name] = paDef
 	alzmg.PolicyAssignments[*paSetDef.Name] = paSetDef
 
-	// add the policy (set) definitions to the alzlib
+	// add the policy (set) definitions to the alzlib.
 	az.policyDefinitions[*pd2.Name] = pd2
 	az.policyDefinitions[*pd1.Name] = pd1
 	az.policySetDefinitions[*ps.Name] = ps
-	// add the policy assignments to the arch
+	// add the policy assignments to the arch.
 	az.policyAssignments[*paDef.Name] = paDef
 	az.policyAssignments[*paSetDef.Name] = paSetDef
 
-	// generate the additional role assignments
+	// generate the additional role assignments.
 	err := alzmg.GeneratePolicyAssignmentAdditionalRoleAssignments(az)
 
-	// check that there were no errors
+	// check that there were no errors.
 	assert.NoError(t, err)
 
-	// check that the additional role assignments were generated correctly
+	// check that the additional role assignments were generated correctly.
 	additionalRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition"}, additionalRas.RoleDefinitionIds.Members())
-	assert.Equal(t, []string{paDef.Properties.Parameters["parameter1"].Value.(string)}, additionalRas.AdditionalScopes.Members())
+	assert.Equal(t, []string{paDef.Properties.Parameters["parameter1"].Value.(string)}, additionalRas.AdditionalScopes.Members()) //nolint:forcetypeassert
 	additionalSetRas, ok := alzmg.AdditionalRoleAssignmentsByPolicyAssignment[*paSetDef.Name]
 	assert.True(t, ok)
 	assert.Equal(t, []string{"/providers/Microsoft.Authorization/roleDefinitions/test-role-definition2"}, additionalSetRas.RoleDefinitionIds.Members())
-	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes.Members())
+	assert.Equal(t, []string{paSetDef.Properties.Parameters["setparameter1"].Value.(string)}, additionalSetRas.AdditionalScopes.Members()) //nolint:forcetypeassert
 }
 
 func TestExtractParameterNameFromArmFunction(t *testing.T) {
 	t.Parallel()
-	// Test with a valid parameter reference
+	// Test with a valid parameter reference.
 	value := "[parameters('parameterName')]"
 	expected := "parameterName"
 	actual, err := extractParameterNameFromArmFunction(value)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
-	// Test with an invalid prefix
+	// Test with an invalid prefix.
 	value = "[param('parameterName')]"
 	_, err = extractParameterNameFromArmFunction(value)
 	assert.Error(t, err)
 
-	// Test with an invalid suffix
+	// Test with an invalid suffix.
 	value = "[parameters('parameterName')"
 	_, err = extractParameterNameFromArmFunction(value)
 	assert.Error(t, err)
 
-	// Test with an invalid format
+	// Test with an invalid format.
 	value = "parameters('parameterName')"
 	_, err = extractParameterNameFromArmFunction(value)
 	assert.Error(t, err)

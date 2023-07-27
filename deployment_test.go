@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestWellKnownParameterReplacement demonstrates the replacement of well-known parameters
+// TestWellKnownParameterReplacement demonstrates the replacement of well-known parameters.
 func TestWellKnownParameterReplacement(t *testing.T) {
 	t.Parallel()
 	az := NewAlzLib()
@@ -41,7 +41,7 @@ func TestWellKnownParameterReplacement(t *testing.T) {
 
 func TestPolicySetDefinitionToMg(t *testing.T) {
 	t.Parallel()
-	// Test with a single management group and policy set definition
+	// Test with a single management group and policy set definition.
 	d := DeploymentType{
 		MGs: map[string]*AlzManagementGroup{
 			"mg1": {
@@ -56,7 +56,7 @@ func TestPolicySetDefinitionToMg(t *testing.T) {
 	}
 	assert.Equal(t, expected, d.policySetDefinitionToMg())
 
-	// Test with multiple management groups and policy set definitions
+	// Test with multiple management groups and policy set definitions.
 	d = DeploymentType{
 		MGs: map[string]*AlzManagementGroup{
 			"mg1": {
@@ -79,7 +79,7 @@ func TestPolicySetDefinitionToMg(t *testing.T) {
 	}
 	assert.Equal(t, expected, d.policySetDefinitionToMg())
 
-	// Test with no management groups or policy set definitions
+	// Test with no management groups or policy set definitions.
 	d = DeploymentType{}
 	expected = map[string]string{}
 	assert.Equal(t, expected, d.policySetDefinitionToMg())
@@ -87,7 +87,7 @@ func TestPolicySetDefinitionToMg(t *testing.T) {
 
 func TestPolicyDefinitionToMg(t *testing.T) {
 	t.Parallel()
-	// Test with a single management group and policy definition
+	// Test with a single management group and policy definition.
 	d := DeploymentType{
 		MGs: map[string]*AlzManagementGroup{
 			"mg1": {
@@ -102,7 +102,7 @@ func TestPolicyDefinitionToMg(t *testing.T) {
 	}
 	assert.Equal(t, expected, d.policyDefinitionToMg())
 
-	// Test with multiple management groups and policy definitions
+	// Test with multiple management groups and policy definitions.
 	d = DeploymentType{
 		MGs: map[string]*AlzManagementGroup{
 			"mg1": {
@@ -125,7 +125,7 @@ func TestPolicyDefinitionToMg(t *testing.T) {
 	}
 	assert.Equal(t, expected, d.policyDefinitionToMg())
 
-	// Test with no management groups or policy definitions
+	// Test with no management groups or policy definitions.
 	d = DeploymentType{}
 	expected = map[string]string{}
 	assert.Equal(t, expected, d.policyDefinitionToMg())
@@ -133,7 +133,7 @@ func TestPolicyDefinitionToMg(t *testing.T) {
 
 func TestModifyPolicyDefinitions(t *testing.T) {
 	t.Parallel()
-	// Test with a single policy definition
+	// Test with a single policy definition.
 	alzmg := &AlzManagementGroup{
 		Name: "mg1",
 		PolicyDefinitions: map[string]*armpolicy.Definition{
@@ -144,7 +144,7 @@ func TestModifyPolicyDefinitions(t *testing.T) {
 	expected := fmt.Sprintf(policyDefinitionIdFmt, "mg1", "pd1")
 	assert.Equal(t, expected, *alzmg.PolicyDefinitions["pd1"].ID)
 
-	// Test with multiple policy definitions
+	// Test with multiple policy definitions.
 	alzmg = &AlzManagementGroup{
 		Name: "mg1",
 		PolicyDefinitions: map[string]*armpolicy.Definition{
@@ -158,7 +158,7 @@ func TestModifyPolicyDefinitions(t *testing.T) {
 	expected = fmt.Sprintf(policyDefinitionIdFmt, "mg1", "pd2")
 	assert.Equal(t, expected, *alzmg.PolicyDefinitions["pd2"].ID)
 
-	// Test with no policy definitions
+	// Test with no policy definitions.
 	alzmg = &AlzManagementGroup{
 		Name:              "mg1",
 		PolicyDefinitions: map[string]*armpolicy.Definition{},
@@ -169,7 +169,7 @@ func TestModifyPolicyDefinitions(t *testing.T) {
 
 func TestModifyPolicySetDefinitions(t *testing.T) {
 	t.Parallel()
-	// Test with a single policy set definition and a single policy definition
+	// Test with a single policy set definition and a single policy definition.
 	alzmg := &AlzManagementGroup{
 		Name: "mg1",
 		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
@@ -193,7 +193,7 @@ func TestModifyPolicySetDefinitions(t *testing.T) {
 	expected = fmt.Sprintf(policyDefinitionIdFmt, "mg1", "pd1")
 	assert.Equal(t, expected, *alzmg.PolicySetDefinitions["psd1"].Properties.PolicyDefinitions[0].PolicyDefinitionID)
 
-	// Test with multiple policy set definitions and policy definitions
+	// Test with multiple policy set definitions and policy definitions.
 	alzmg = &AlzManagementGroup{
 		Name: "mg1",
 		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{
@@ -237,7 +237,7 @@ func TestModifyPolicySetDefinitions(t *testing.T) {
 	expected = fmt.Sprintf(policyDefinitionIdFmt, "mg1", "pd3")
 	assert.Equal(t, expected, *alzmg.PolicySetDefinitions["psd2"].Properties.PolicyDefinitions[1].PolicyDefinitionID)
 
-	// Test with no policy set definitions or policy definitions
+	// Test with no policy set definitions or policy definitions.
 	alzmg = &AlzManagementGroup{
 		Name:                 "mg1",
 		PolicySetDefinitions: map[string]*armpolicy.SetDefinition{},
@@ -298,7 +298,7 @@ func TestModifyRoleDefinitions(t *testing.T) {
 	assert.Len(t, alzmg.RoleDefinitions["rd2"].Properties.AssignableScopes, 1)
 	assert.Equal(t, fmt.Sprintf(managementGroupIdFmt, "mg1"), *alzmg.RoleDefinitions["rd2"].Properties.AssignableScopes[0])
 
-	// Test with no role definitions
+	// Test with no role definitions.
 	alzmg = &AlzManagementGroup{
 		Name:            "mg1",
 		RoleDefinitions: map[string]*armauthorization.RoleDefinition{},
@@ -309,7 +309,7 @@ func TestModifyRoleDefinitions(t *testing.T) {
 
 func TestModifyPolicyAssignments(t *testing.T) {
 	t.Parallel()
-	// Test with a single policy assignment and policy definition
+	// Test with a single policy assignment and policy definition.
 	alzmg := &AlzManagementGroup{
 		Name: "mg1",
 		PolicyAssignments: map[string]*armpolicy.Assignment{
@@ -341,7 +341,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 	expected = "eastus"
 	assert.Equal(t, expected, *alzmg.PolicyAssignments["pa1"].Location)
 
-	// Test with multiple policy assignments and policy definitions
+	// Test with multiple policy assignments and policy definitions.
 	alzmg = &AlzManagementGroup{
 		Name: "mg1",
 		PolicyAssignments: map[string]*armpolicy.Assignment{
@@ -388,7 +388,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 	expected = "eastus"
 	assert.Equal(t, expected, *alzmg.PolicyAssignments["pa2"].Location)
 
-	// Test with invalid policy definition id
+	// Test with invalid policy definition id.
 	alzmg = &AlzManagementGroup{
 		Name: "mg1",
 		PolicyAssignments: map[string]*armpolicy.Assignment{
@@ -411,7 +411,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 
 func TestAddManagementGroup(t *testing.T) {
 	t.Parallel()
-	// create a new deployment type
+	// create a new deployment type.
 	wkvs := &WellKnownPolicyValues{
 		DefaultLocation: "eastus",
 	}
@@ -426,7 +426,7 @@ func TestAddManagementGroup(t *testing.T) {
 	}
 	arch.wellKnownPolicyValues = wkvs
 
-	// test adding a new management group with no parent
+	// test adding a new management group with no parent.
 	err := az.AddManagementGroupToDeployment("mg1", "mg1", "external", true, arch)
 	assert.NoError(t, err)
 	assert.Len(t, az.Deployment.MGs, 1)
@@ -436,7 +436,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Nil(t, az.Deployment.MGs["mg1"].parent)
 	assert.Empty(t, az.Deployment.MGs["mg1"].children)
 
-	// test adding a new management group with a parent
+	// test adding a new management group with a parent.
 	err = az.AddManagementGroupToDeployment("mg2", "mg2", "mg1", false, arch)
 	assert.NoError(t, err)
 	assert.Len(t, az.Deployment.MGs, 2)
@@ -448,7 +448,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Len(t, az.Deployment.MGs["mg1"].children, 1)
 	assert.Equal(t, "mg2", az.Deployment.MGs["mg1"].children.Members()[0].Name)
 
-	// test adding a new management group with a non-existent parent
+	// test adding a new management group with a non-existent parent.
 	err = az.AddManagementGroupToDeployment("mg3", "mg3", "mg4", false, arch)
 	assert.Error(t, err)
 	assert.Len(t, az.Deployment.MGs, 2)
@@ -456,7 +456,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Contains(t, az.Deployment.MGs, "mg2")
 	assert.NotContains(t, az.Deployment.MGs, "mg3")
 
-	// test adding a new management group with multiple root management groups
+	// test adding a new management group with multiple root management groups.
 	err = az.AddManagementGroupToDeployment("mg4", "mg4", "external", true, arch)
 	assert.Error(t, err)
 	assert.Len(t, az.Deployment.MGs, 2)
@@ -464,7 +464,7 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Contains(t, az.Deployment.MGs, "mg2")
 	assert.NotContains(t, az.Deployment.MGs, "mg4")
 
-	// test adding a new management group with an existing name
+	// test adding a new management group with an existing name.
 	err = az.AddManagementGroupToDeployment("mg1", "mg1", "external", true, arch)
 	assert.Error(t, err)
 	assert.Len(t, az.Deployment.MGs, 2)
@@ -474,7 +474,7 @@ func TestAddManagementGroup(t *testing.T) {
 
 func TestNewUUID(t *testing.T) {
 	t.Parallel()
-	// create a new UUID namespace
+	// create a new UUID namespace.
 	ns := uuid.MustParse("d97506b3-4470-5694-a203-2c37e477d3ac")
 
 	u := uuidV5("foo", "bar", "baz")

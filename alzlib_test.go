@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ExampleAlzLib_Init demonstrates the creation of a new AlzLib based a sample directory
+// ExampleAlzLib_Init demonstrates the creation of a new AlzLib based a sample directory.
 func ExampleAlzLib_Init() {
 	az := NewAlzLib()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -42,7 +42,7 @@ func TestNewAlzLibWithNoDir(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
-// Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory
+// Test_NewAlzLibDuplicateArchetypeDefinition tests the creation of a new AlzLib from a invalid source directory.
 func Test_NewAlzLibDuplicateArchetypeDefinition(t *testing.T) {
 	az := NewAlzLib()
 	dir := os.DirFS("./testdata/badlib-duplicatearchetypedef")

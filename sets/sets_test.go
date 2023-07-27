@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/matt-FFFFFF/alzlib/sets"
+	"golang.org/x/exp/slices"
 )
 
 func TestSet_Add(t *testing.T) {
@@ -39,7 +40,7 @@ func TestSet_Members(t *testing.T) {
 	if len(members) != 3 {
 		t.Errorf("Set.Members returned an incorrect number of members")
 	}
-	if members[0] != 1 || members[1] != 2 || members[2] != 3 {
+	if !slices.Contains(members, 1) || !slices.Contains(members, 2) || !slices.Contains(members, 3) {
 		t.Errorf(fmt.Sprintf("Set.Members returned incorrect members: %v, %v", s, members))
 	}
 }
