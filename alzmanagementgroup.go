@@ -498,6 +498,7 @@ func newAlzManagementGroup() *AlzManagementGroup {
 	}
 }
 
+// copyMap takes a map of pointers and returns a map of values.
 func copyMap[E comparable, T any](m map[E]*T) map[E]T {
 	m2 := make(map[E]T, len(m))
 	for k, v := range m {
