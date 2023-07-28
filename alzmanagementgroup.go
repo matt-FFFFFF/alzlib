@@ -4,28 +4,33 @@
 package alzlib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
-	"github.com/matt-FFFFFF/alzlib/sets"
+	sets "github.com/deckarep/golang-set/v2"
+	"github.com/matt-FFFFFF/alzlib/to"
 )
 
 // AlzManagementGroup represents an Azure Management Group within a hierarchy, with links to parent and children.
 type AlzManagementGroup struct {
-	Name                                        string
-	DisplayName                                 string
-	PolicyDefinitions                           map[string]*armpolicy.Definition
-	PolicySetDefinitions                        map[string]*armpolicy.SetDefinition
-	PolicyAssignments                           map[string]*armpolicy.Assignment
-	RoleDefinitions                             map[string]*armauthorization.RoleDefinition
-	RoleAssignments                             map[string]*armauthorization.RoleAssignment
-	AdditionalRoleAssignmentsByPolicyAssignment map[string]*PolicyAssignmentAdditionalRoleAssignments
+	name                                        string
+	displayName                                 string
+	policyDefinitions                           map[string]*armpolicy.Definition
+	policySetDefinitions                        map[string]*armpolicy.SetDefinition
+	policyAssignments                           map[string]*armpolicy.Assignment
+	roleDefinitions                             map[string]*armauthorization.RoleDefinition
+	roleAssignments                             map[string]*armauthorization.RoleAssignment
+	additionalRoleAssignmentsByPolicyAssignment map[string]*PolicyAssignmentAdditionalRoleAssignments
 	children                                    sets.Set[*AlzManagementGroup]
 	parent                                      *AlzManagementGroup
 	parentExternal                              *string
+	wkpv                                        *WellKnownPolicyValues
+	mu                                          *sync.RWMutex
 }
 
 // PolicyAssignmentAdditionalRoleAssignments represents the additional role assignments that need to be created for a management group.
@@ -38,7 +43,7 @@ type PolicyAssignmentAdditionalRoleAssignments struct {
 
 // GetChildren returns the children of the management group.
 func (alzmg *AlzManagementGroup) GetChildren() []*AlzManagementGroup {
-	return alzmg.children.Members()
+	return alzmg.children.ToSlice()
 }
 
 // GetParentId returns the ID of the parent management group.
@@ -49,7 +54,7 @@ func (alzmg *AlzManagementGroup) GetParentId() string {
 		return *alzmg.parentExternal
 	}
 	if alzmg.parent != nil {
-		return alzmg.parent.Name
+		return alzmg.parent.name
 	}
 	return ""
 }
@@ -73,28 +78,18 @@ func (alzmg *AlzManagementGroup) ParentIsExternal() bool {
 
 // ResourceId returns the resource ID of the management group.
 func (alzmg *AlzManagementGroup) ResourceId() string {
-	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
+	return fmt.Sprintf(managementGroupIdFmt, alzmg.name)
 }
 
-// PolicyDefinitionRule represents the rule section of a policy definition.
+// policyDefinitionRule represents the opinionated rule section of a policy definition.
 // This is used to determine the role assignments that need to be created,
-// therefore we only care about the `then` field.
-type PolicyDefinitionRule struct {
-	Then *PolicyDefinitionRuleThen `json:"then"`
-}
-
-// PolicyDefinitionRuleThen represents the `then` section of a policy definition rule.
-// This is used to determine the role assignments that need to be created.
-// We only care about the `details` field.
-type PolicyDefinitionRuleThen struct {
-	Details *PolicyDefinitionRuleThenDetails `json:"details"`
-}
-
-// PolicyDefinitionRuleThenDetails represents the `details` section of a policy definition rule `then` section.
-// This is used to determine the role assignments that need to be created.
-// We only care about the `roleDefinitionIds` field.
-type PolicyDefinitionRuleThenDetails struct {
-	RoleDefinitionIds []string `json:"roleDefinitionIds"`
+// therefore we only care about the `then.details.roleDefinitionIds` field.
+type policyDefinitionRule struct {
+	Then *struct {
+		Details *struct {
+			RoleDefinitionIds []string `json:"roleDefinitionIds"`
+		} `json:"details"`
+	} `json:"then"`
 }
 
 // GeneratePolicyAssignmentAdditionalRoleAssignments generates the additional role assignment data needed for the policy assignments
@@ -102,7 +97,9 @@ type PolicyDefinitionRuleThenDetails struct {
 // It will iterate through all policy assignments and generate the additional role assignments for each one,
 // storing them in the AdditionalRoleAssignmentsByPolicyAssignment map.
 func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignments(az *AlzLib) error {
-	for paName, pa := range alzmg.PolicyAssignments {
+	alzmg.mu.Lock()
+	defer alzmg.mu.Unlock()
+	for paName, pa := range alzmg.policyAssignments {
 		// we only care about policy assignments that use an identity
 		if pa.Identity == nil || pa.Identity.Type == nil || *pa.Identity.Type == "None" {
 			continue
@@ -202,14 +199,22 @@ func (alzmg *AlzManagementGroup) GeneratePolicyAssignmentAdditionalRoleAssignmen
 				}
 			}
 		}
-		alzmg.AdditionalRoleAssignmentsByPolicyAssignment[paName] = additionalRas
+		alzmg.additionalRoleAssignmentsByPolicyAssignment[paName] = additionalRas
 	}
 
 	return nil
 }
 
-// Update will update the AlzManagementGroup resources with the correct resource ids, references, etc.
-func (alzmg *AlzManagementGroup) Update(az *AlzLib, wkpv *WellKnownPolicyValues) error {
+// Update will Update the AlzManagementGroup resources with the correct resource ids, references, etc.
+// Make sure to pass in any updates to the policy assignment parameter values.
+func (alzmg *AlzManagementGroup) Update(az *AlzLib, papv PolicyAssignmentsParameterValues) error {
+	if alzmg.wkpv == nil {
+		return fmt.Errorf("well known policy assignment parameter values not set for ALZManagementGroup %s", alzmg.name)
+	}
+
+	alzmg.mu.Lock()
+	defer alzmg.mu.Unlock()
+
 	pd2mg := az.Deployment.policyDefinitionToMg()
 	psd2mg := az.Deployment.policySetDefinitionToMg()
 
@@ -220,22 +225,112 @@ func (alzmg *AlzManagementGroup) Update(az *AlzLib, wkpv *WellKnownPolicyValues)
 	// and write the definition id if it's custom.
 	modifyPolicySetDefinitions(alzmg, pd2mg)
 
+	// re-write the assignableScopes for the role definitions.
+	modifyRoleDefinitions(alzmg)
+
 	// re-write the policy assignment ID property to be the current MG name
 	// and go through the referenced definitions and write the definition id if it's custom
 	// and set the well known parameters.
-	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, wkpv); err != nil {
+	// Update well known policy assignment parameters.
+	wk := getWellKnownPolicyAssignmentParameterValues(alzmg.wkpv)
+	papv = wk.Merge(papv)
+
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, papv); err != nil {
 		return err
 	}
 
-	// re-write the assignableScopes for the role definitions.
-	modifyRoleDefinitions(alzmg)
 	return nil
 }
 
-func (alzmg *AlzManagementGroup) GetResourceId() string {
-	return fmt.Sprintf(managementGroupIdFmt, alzmg.Name)
+// UpsertPolicyAssignments adds policy assignments to the management group.
+// These can be net-new assignments, or amendments to existing assignments.
+// It will deep merge the supplied assignments with the existing assignments.
+// If the assignment already exists, its attributes will be updated, but not entirely replaced.
+func (alzmg *AlzManagementGroup) UpsertPolicyAssignments(ctx context.Context, pas map[string]*armpolicy.Assignment, az *AlzLib) error {
+	alzmg.mu.Lock()
+	defer alzmg.mu.Unlock()
+
+	papv := make(PolicyAssignmentsParameterValues)
+	defsToGet := sets.NewSet[string]()
+
+	for name, pa := range pas {
+		if _, ok := alzmg.policyAssignments[name]; !ok {
+			alzmg.policyAssignments[name] = pa
+			continue
+		}
+		if pa.Properties == nil {
+			continue
+		}
+		if alzmg.policyAssignments[name].Properties == nil {
+			alzmg.policyAssignments[name].Properties = new(armpolicy.AssignmentProperties)
+		}
+
+		if pa.Properties.DisplayName != nil {
+			alzmg.policyAssignments[name].Properties.DisplayName = pa.Properties.DisplayName
+		}
+
+		if pa.Properties.Description != nil {
+			alzmg.policyAssignments[name].Properties.Description = pa.Properties.Description
+		}
+
+		if pa.Properties.Metadata != nil {
+			alzmg.policyAssignments[name].Properties.Metadata = pa.Properties.Metadata
+		}
+
+		// Update policy assignment parameter values map.
+		if pa.Properties.Parameters != nil && len(pa.Properties.Parameters) > 0 {
+			papv[name] = pa.Properties.Parameters
+		}
+
+		if pa.Properties.EnforcementMode != nil {
+			alzmg.policyAssignments[name].Properties.EnforcementMode = pa.Properties.EnforcementMode
+		}
+
+		if pa.Properties.NonComplianceMessages != nil {
+			if alzmg.policyAssignments[name].Properties.NonComplianceMessages == nil {
+				alzmg.policyAssignments[name].Properties.NonComplianceMessages = make([]*armpolicy.NonComplianceMessage, len(pa.Properties.NonComplianceMessages))
+			}
+			alzmg.policyAssignments[name].Properties.NonComplianceMessages = pa.Properties.NonComplianceMessages
+		}
+
+		if pa.Properties.PolicyDefinitionID != nil {
+			alzmg.policyAssignments[name].Properties.PolicyDefinitionID = pa.Properties.PolicyDefinitionID
+			switch lastButOneSegment(*pa.Properties.PolicyDefinitionID) {
+			case "policyDefinitions":
+				if !az.PolicyDefinitionExists(lastSegment(*pa.Properties.PolicyDefinitionID)) {
+					defsToGet.Add(*pa.Properties.PolicyDefinitionID)
+				}
+			case "policySetDefinitions":
+				if !az.PolicySetDefinitionExists(lastSegment(*pa.Properties.PolicyDefinitionID)) {
+					defsToGet.Add(*pa.Properties.PolicyDefinitionID)
+				}
+			}
+		}
+	}
+	// fetch defs that don't exist
+	if defsToGet.Cardinality() > 0 {
+		if err := az.GetDefinitionsFromAzure(ctx, defsToGet.ToSlice()); err != nil {
+			return err
+		}
+	}
+
+	// update the policy assignments
+	pd2mg := az.Deployment.policyDefinitionToMg()
+	psd2mg := az.Deployment.policySetDefinitionToMg()
+
+	if err := modifyPolicyAssignments(alzmg, pd2mg, psd2mg, papv); err != nil {
+		return err
+	}
+
+	return nil
 }
 
+// GetResourceId returns the resource ID for the management group.
+func (alzmg *AlzManagementGroup) GetResourceId() string {
+	return fmt.Sprintf(managementGroupIdFmt, alzmg.name)
+}
+
+// extractParameterNameFromArmFunction extracts the parameter name from an ARM function.
 func extractParameterNameFromArmFunction(value string) (string, error) {
 	// value is of the form "[parameters('parameterName')]".
 	if !strings.HasPrefix(value, "[parameters('") || !strings.HasSuffix(value, "')]") {
@@ -252,7 +347,7 @@ func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not marshall policy rule: %w", err)
 	}
-	r := new(PolicyDefinitionRule)
+	r := new(policyDefinitionRule)
 	if err := json.Unmarshal(j, r); err != nil {
 		return nil, fmt.Errorf("could not unmarshall policy rule: %w", err)
 	}
@@ -262,6 +357,10 @@ func getPolicyDefRoleDefinitionIds(rule any) ([]string, error) {
 	return r.Then.Details.RoleDefinitionIds, nil
 }
 
+// getPolicyAssignmentParametersValueValue returns the value of a policy assignment parameter.
+// We always expect the value to be a string as it's used in calculating the additional role assignments for
+// policy parameters with the assignPermissions metadata set to true.
+// Therefore the value should be am ARM resourceId.
 func getPolicyAssignmentParametersValueValue(pa *armpolicy.Assignment, paramname string) (string, error) {
 	if pa.Properties.Parameters == nil {
 		return "", fmt.Errorf("parameters is nil in policy assignment %s", *pa.Name)
@@ -278,4 +377,93 @@ func getPolicyAssignmentParametersValueValue(pa *armpolicy.Assignment, paramname
 		return "", fmt.Errorf("parameter %s value in policy assignment %s is not a string", paramname, *pa.Name)
 	}
 	return paParamValStr, nil
+}
+
+// modifyPolicyDefinitions re-writes the policy definition resource IDs for the correct management group.
+func modifyPolicyDefinitions(alzmg *AlzManagementGroup) {
+	for k, v := range alzmg.policyDefinitions {
+		v.ID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, alzmg.name, k))
+	}
+}
+
+// These for loops re-write the referenced policy definition resource IDs
+// for all policy sets.
+// It looks up the policy definition names that are in all archetypes in the Deployment.
+// If it is found, the definition reference id is re-written with the correct management group name.
+// If it is not found, we assume that it's built-in.
+func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]string) {
+	for k, v := range alzmg.policySetDefinitions {
+		v.ID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, alzmg.name, k))
+		for _, pd := range v.Properties.PolicyDefinitions {
+			pdname := lastSegment(*pd.PolicyDefinitionID)
+			if mgname, ok := pd2mg[pdname]; ok {
+				pd.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, pdname))
+			}
+		}
+	}
+}
+
+func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, papv PolicyAssignmentsParameterValues) error {
+
+	for assignmentName, params := range papv {
+		pa, ok := alzmg.policyAssignments[assignmentName]
+		if !ok {
+			continue
+		}
+		if pa.Properties.Parameters == nil {
+			pa.Properties.Parameters = make(map[string]*armpolicy.ParameterValuesValue, 1)
+		}
+		for param, value := range params {
+			pa.Properties.Parameters[param] = value
+		}
+	}
+
+	// Update resource ids and refs.
+	for assignmentName, assignment := range alzmg.policyAssignments {
+		assignment.ID = to.Ptr(fmt.Sprintf(policyAssignmentIdFmt, alzmg.name, assignmentName))
+		assignment.Properties.Scope = to.Ptr(fmt.Sprintf(managementGroupIdFmt, alzmg.name))
+		if assignment.Location != nil {
+			assignment.Location = to.Ptr(alzmg.wkpv.DefaultLocation)
+		}
+
+		// rewrite the referenced policy definition id
+		// if the policy definition is in the list.
+		pd := assignment.Properties.PolicyDefinitionID
+		switch lastButOneSegment(*pd) {
+		case "policyDefinitions":
+			if mgname, ok := pd2mg[lastSegment(*pd)]; ok {
+				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policyDefinitionIdFmt, mgname, lastSegment(*pd)))
+			}
+		case "policySetDefinitions":
+			if mgname, ok := psd2mg[lastSegment(*pd)]; ok {
+				assignment.Properties.PolicyDefinitionID = to.Ptr(fmt.Sprintf(policySetDefinitionIdFmt, mgname, lastSegment(*pd)))
+			}
+		default:
+			return fmt.Errorf("policy assignment %s has invalid resource type in id %s", assignmentName, *pd)
+		}
+	}
+	return nil
+}
+
+func modifyRoleDefinitions(alzmg *AlzManagementGroup) {
+	for _, roledef := range alzmg.roleDefinitions {
+		u := uuidV5(alzmg.name, *roledef.Name)
+		roledef.ID = to.Ptr(fmt.Sprintf(roleDefinitionIdFmt, alzmg.name, u))
+		if roledef.Properties.AssignableScopes == nil || len(roledef.Properties.AssignableScopes) == 0 {
+			roledef.Properties.AssignableScopes = make([]*string, 1)
+		}
+		roledef.Properties.AssignableScopes[0] = to.Ptr(alzmg.GetResourceId())
+	}
+}
+
+func newAlzManagementGroup() *AlzManagementGroup {
+	return &AlzManagementGroup{
+		additionalRoleAssignmentsByPolicyAssignment: make(map[string]*PolicyAssignmentAdditionalRoleAssignments),
+		policyDefinitions:    make(map[string]*armpolicy.Definition),
+		policySetDefinitions: make(map[string]*armpolicy.SetDefinition),
+		policyAssignments:    make(map[string]*armpolicy.Assignment),
+		roleAssignments:      make(map[string]*armauthorization.RoleAssignment),
+		roleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
+		mu:                   &sync.RWMutex{},
+	}
 }

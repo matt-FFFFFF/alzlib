@@ -14,8 +14,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
+	sets "github.com/deckarep/golang-set/v2"
 	"github.com/matt-FFFFFF/alzlib/processor"
-	"github.com/matt-FFFFFF/alzlib/sets"
 	"github.com/matt-FFFFFF/alzlib/to"
 	"golang.org/x/sync/errgroup"
 )
@@ -80,13 +80,15 @@ func NewAlzLib() *AlzLib {
 		Options:    getDefaultAlzLibOptions(),
 		archetypes: make(map[string]*Archetype),
 		Deployment: &DeploymentType{
-			MGs: make(map[string]*AlzManagementGroup),
+			mgs: make(map[string]*AlzManagementGroup),
+			mu:  sync.RWMutex{},
 		},
 		policyAssignments:    make(map[string]*armpolicy.Assignment),
 		policyDefinitions:    make(map[string]*armpolicy.Definition),
 		policySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 		roleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 		clients:              new(azureClients),
+		mu:                   sync.RWMutex{},
 	}
 	return az
 }
@@ -181,7 +183,7 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 	// Get the policy definitions and policy set definitions referenced by the policy assignments.
 	assignedPolicyDefinitionIds := sets.NewSet[string]()
 	for archname, arch := range az.archetypes {
-		for pa := range arch.PolicyAssignments {
+		for pa := range arch.PolicyAssignments.Iter() {
 			if _, exists := az.policyAssignments[pa]; !exists {
 				return fmt.Errorf("policy assignment %s referenced in archetype %s does not exist in the library", pa, archname)
 			}
@@ -189,7 +191,7 @@ func (az *AlzLib) Init(ctx context.Context, libs ...fs.FS) error {
 		}
 	}
 
-	if err := az.GetDefinitionsFromAzure(ctx, assignedPolicyDefinitionIds.Members()); err != nil {
+	if err := az.GetDefinitionsFromAzure(ctx, assignedPolicyDefinitionIds.ToSlice()); err != nil {
 		return err
 	}
 
@@ -207,33 +209,33 @@ func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent strin
 
 	az.Deployment.mu.Lock()
 	defer az.Deployment.mu.Unlock()
-	if _, exists := az.Deployment.MGs[name]; exists {
+	if _, exists := az.Deployment.mgs[name]; exists {
 		return fmt.Errorf("management group %s already exists", name)
 	}
 	alzmg := newAlzManagementGroup()
 
-	alzmg.Name = name
-	alzmg.DisplayName = displayName
+	alzmg.name = name
+	alzmg.displayName = displayName
 	alzmg.children = sets.NewSet[*AlzManagementGroup]()
 	if parentIsExternal {
-		if _, ok := az.Deployment.MGs[parent]; ok {
+		if _, ok := az.Deployment.mgs[parent]; ok {
 
 			return fmt.Errorf("external parent management group set, but already exists %s", parent)
 		}
 		alzmg.parentExternal = to.Ptr[string](parent)
 	}
 	if !parentIsExternal && parent != "" {
-		mg, ok := az.Deployment.MGs[parent]
+		mg, ok := az.Deployment.mgs[parent]
 		if !ok {
 			return fmt.Errorf("parent management group not found %s", parent)
 		}
 		alzmg.parent = mg
-		az.Deployment.MGs[parent].children.Add(alzmg)
+		az.Deployment.mgs[parent].children.Add(alzmg)
 	}
 
 	// We only allow one intermediate root management group, so check if this is the first one.
 	if parentIsExternal {
-		for mgname, mg := range az.Deployment.MGs {
+		for mgname, mg := range az.Deployment.mgs {
 			if mg.parentExternal != nil {
 				return fmt.Errorf("multiple root management groups: %s and %s", mgname, name)
 			}
@@ -241,32 +243,33 @@ func (az *AlzLib) AddManagementGroupToDeployment(name, displayName, parent strin
 	}
 
 	// make copies of the archetype resources for modification in the Deployment management group.
-	for _, name := range arch.PolicyDefinitions.Members() {
+	for name := range arch.PolicyDefinitions.Iter() {
 		newdef := new(armpolicy.Definition)
 		*newdef = *az.policyDefinitions[name]
-		alzmg.PolicyDefinitions[name] = newdef
+		alzmg.policyDefinitions[name] = newdef
 	}
-	for _, name := range arch.PolicySetDefinitions.Members() {
+	for name := range arch.PolicySetDefinitions.Iter() {
 		newdef := new(armpolicy.SetDefinition)
 		*newdef = *az.policySetDefinitions[name]
-		alzmg.PolicySetDefinitions[name] = newdef
+		alzmg.policySetDefinitions[name] = newdef
 	}
-	for _, name := range arch.PolicyAssignments.Members() {
+	for name := range arch.PolicyAssignments.Iter() {
 		newpolassign := new(armpolicy.Assignment)
 		*newpolassign = *az.policyAssignments[name]
-		alzmg.PolicyAssignments[name] = newpolassign
+		alzmg.policyAssignments[name] = newpolassign
 	}
-	for _, name := range arch.RoleDefinitions.Members() {
+	for name := range arch.RoleDefinitions.Iter() {
 		newroledef := new(armauthorization.RoleDefinition)
 		*newroledef = *az.roleDefinitions[name]
-		alzmg.RoleDefinitions[name] = newroledef
+		alzmg.roleDefinitions[name] = newroledef
 	}
+	alzmg.wkpv = arch.wellKnownPolicyValues
 
 	// add the management group to the deployment.
-	az.Deployment.MGs[name] = alzmg
+	az.Deployment.mgs[name] = alzmg
 
 	// run Update to change all refs, etc.
-	if err := az.Deployment.MGs[name].Update(az, arch.wellKnownPolicyValues); err != nil {
+	if err := az.Deployment.mgs[name].Update(az, nil); err != nil {
 		return err
 	}
 
@@ -309,13 +312,13 @@ func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) err
 
 	// Add the referenced built-in definitions and set definitions to the AlzLib struct
 	// so that we can use the data to determine the correct role assignments at scope.
-	if len(policyDefsToGet) != 0 {
-		if err := az.GetBuiltInPolicies(ctx, policyDefsToGet.Members()); err != nil {
+	if policyDefsToGet.Cardinality() != 0 {
+		if err := az.GetBuiltInPolicies(ctx, policyDefsToGet.ToSlice()); err != nil {
 			return err
 		}
 	}
-	if len(policySetDefsToGet) != 0 {
-		if err := az.GetBuiltInPolicySets(ctx, policySetDefsToGet.Members()); err != nil {
+	if policySetDefsToGet.Cardinality() != 0 {
+		if err := az.GetBuiltInPolicySets(ctx, policySetDefsToGet.ToSlice()); err != nil {
 			return err
 		}
 	}
