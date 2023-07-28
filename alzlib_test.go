@@ -69,6 +69,8 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Equal(t, "mg1", az.Deployment.mgs["mg1"].displayName)
 	assert.Nil(t, az.Deployment.mgs["mg1"].parent)
 	assert.Equal(t, az.Deployment.mgs["mg1"].children.Cardinality(), 0)
+	assert.True(t, az.Deployment.mgs["mg1"].ParentIsExternal())
+	assert.Equal(t, fmt.Sprintf(managementGroupIdFmt, "mg1"), az.Deployment.mgs["mg1"].GetResourceId())
 
 	// test adding a new management group with a parent.
 	err = az.AddManagementGroupToDeployment("mg2", "mg2", "mg1", false, arch)
@@ -81,6 +83,8 @@ func TestAddManagementGroup(t *testing.T) {
 	assert.Equal(t, "mg1", az.Deployment.mgs["mg2"].parent.name)
 	assert.Equal(t, az.Deployment.mgs["mg1"].children.Cardinality(), 1)
 	assert.Equal(t, "mg2", az.Deployment.mgs["mg1"].children.ToSlice()[0].name)
+	assert.False(t, az.Deployment.mgs["mg2"].ParentIsExternal())
+	assert.Equal(t, az.Deployment.mgs["mg1"], az.Deployment.mgs["mg2"].GetParentMg())
 
 	// test adding a new management group with a non-existent parent.
 	err = az.AddManagementGroupToDeployment("mg3", "mg3", "mg4", false, arch)
