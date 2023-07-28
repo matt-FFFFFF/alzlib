@@ -8,21 +8,21 @@ import "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolic
 type PolicyAssignmentsParameterValues map[string]map[string]*armpolicy.ParameterValuesValue
 
 // Merge merges the other PolicyAssignmentsParameterValues into this one.
-func (this PolicyAssignmentsParameterValues) Merge(other PolicyAssignmentsParameterValues) PolicyAssignmentsParameterValues {
+func (papv PolicyAssignmentsParameterValues) Merge(other PolicyAssignmentsParameterValues) PolicyAssignmentsParameterValues {
 	if other == nil {
-		return this
+		return papv
 	}
 	for assignment, parametermap := range other {
 		// If assignment doesn't exist in original, create it.
 		if _, ok := this[assignment]; !ok {
-			this[assignment] = make(map[string]*armpolicy.ParameterValuesValue)
+			papv[assignment] = make(map[string]*armpolicy.ParameterValuesValue)
 		}
 		// Merge the parameter values.
 		for parameter, value := range parametermap {
-			this[assignment][parameter] = value
+			papv[assignment][parameter] = value
 		}
 	}
-	return this
+	return papv
 }
 
 // getWellKnownPolicyAssignmentParameterValues is used by the *Archetype.WithWellKnownPolicyValues() method to
