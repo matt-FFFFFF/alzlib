@@ -14,7 +14,7 @@ func (papv PolicyAssignmentsParameterValues) Merge(other PolicyAssignmentsParame
 	}
 	for assignment, parametermap := range other {
 		// If assignment doesn't exist in original, create it.
-		if _, ok := this[assignment]; !ok {
+		if _, ok := papv[assignment]; !ok {
 			papv[assignment] = make(map[string]*armpolicy.ParameterValuesValue)
 		}
 		// Merge the parameter values.
