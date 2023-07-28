@@ -41,6 +41,17 @@ type PolicyAssignmentAdditionalRoleAssignments struct {
 	AdditionalScopes  sets.Set[string]
 }
 
+// policyDefinitionRule represents the opinionated rule section of a policy definition.
+// This is used to determine the role assignments that need to be created,
+// therefore we only care about the `then.details.roleDefinitionIds` field.
+type policyDefinitionRule struct {
+	Then *struct {
+		Details *struct {
+			RoleDefinitionIds []string `json:"roleDefinitionIds"`
+		} `json:"details"`
+	} `json:"then"`
+}
+
 // GetChildren returns the children of the management group.
 func (alzmg *AlzManagementGroup) GetChildren() []*AlzManagementGroup {
 	return alzmg.children.ToSlice()
@@ -81,15 +92,29 @@ func (alzmg *AlzManagementGroup) ResourceId() string {
 	return fmt.Sprintf(managementGroupIdFmt, alzmg.name)
 }
 
-// policyDefinitionRule represents the opinionated rule section of a policy definition.
-// This is used to determine the role assignments that need to be created,
-// therefore we only care about the `then.details.roleDefinitionIds` field.
-type policyDefinitionRule struct {
-	Then *struct {
-		Details *struct {
-			RoleDefinitionIds []string `json:"roleDefinitionIds"`
-		} `json:"details"`
-	} `json:"then"`
+// GetPolicyAssignmentMap returns a copy of the policy assignments map.
+func (alzmg *AlzManagementGroup) GetPolicyAssignmentMap() map[string]*armpolicy.Assignment {
+	return copyMap[string, *armpolicy.Assignment](alzmg.policyAssignments)
+}
+
+// GetPolicyDefinitionsMap returns a copy of the policy definitions map.
+func (alzmg *AlzManagementGroup) GetPolicyDefinitionsMap() map[string]*armpolicy.Definition {
+	return copyMap[string, *armpolicy.Definition](alzmg.policyDefinitions)
+}
+
+// GetPolicySetDefinitionsMap returns a copy of the policy definitions map.
+func (alzmg *AlzManagementGroup) GetPolicySetDefinitionsMap() map[string]*armpolicy.SetDefinition {
+	return copyMap[string, *armpolicy.SetDefinition](alzmg.policySetDefinitions)
+}
+
+// GetRoleDefinitionsMap returns a copy of the role definitions map.
+func (alzmg *AlzManagementGroup) GetRoleDefinitionsMap() map[string]*armauthorization.RoleDefinition {
+	return copyMap[string, *armauthorization.RoleDefinition](alzmg.roleDefinitions)
+}
+
+// GetRoleAssignmentsMap returns a copy of the role Assignments map.
+func (alzmg *AlzManagementGroup) GetRoleAssignmentsMap() map[string]*armauthorization.RoleAssignment {
+	return copyMap[string, *armauthorization.RoleAssignment](alzmg.roleAssignments)
 }
 
 // GeneratePolicyAssignmentAdditionalRoleAssignments generates the additional role assignment data needed for the policy assignments
@@ -307,6 +332,7 @@ func (alzmg *AlzManagementGroup) UpsertPolicyAssignments(ctx context.Context, pa
 			}
 		}
 	}
+
 	// fetch defs that don't exist
 	if defsToGet.Cardinality() > 0 {
 		if err := az.GetDefinitionsFromAzure(ctx, defsToGet.ToSlice()); err != nil {
@@ -404,7 +430,6 @@ func modifyPolicySetDefinitions(alzmg *AlzManagementGroup, pd2mg map[string]stri
 }
 
 func modifyPolicyAssignments(alzmg *AlzManagementGroup, pd2mg, psd2mg map[string]string, papv PolicyAssignmentsParameterValues) error {
-
 	for assignmentName, params := range papv {
 		pa, ok := alzmg.policyAssignments[assignmentName]
 		if !ok {
@@ -466,4 +491,12 @@ func newAlzManagementGroup() *AlzManagementGroup {
 		roleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
 		mu:                   &sync.RWMutex{},
 	}
+}
+
+func copyMap[E comparable, T any](m map[E]T) map[E]T {
+	m2 := make(map[E]T, len(m))
+	for k, v := range m {
+		m2[k] = v
+	}
+	return m2
 }

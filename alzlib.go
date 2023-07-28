@@ -285,7 +285,7 @@ func (az *AlzLib) GetDefinitionsFromAzure(ctx context.Context, pds []string) err
 	for _, pd := range pds {
 		switch strings.ToLower(lastButOneSegment(pd)) {
 		case "policydefinitions":
-			if _, exists := az.policyDefinitions[lastSegment(pd)]; !exists {
+			if !az.PolicyDefinitionExists(lastSegment(pd)) {
 				policyDefsToGet.Add(lastSegment(pd))
 			}
 		case "policysetdefinitions":

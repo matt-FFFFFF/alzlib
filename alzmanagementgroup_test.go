@@ -600,3 +600,24 @@ func TestUpsertPolicyAssignments(t *testing.T) {
 	assert.Equal(t, pa, alzmg.policyAssignments["test-policy-assignment"])
 	assert.Equal(t, pa2, alzmg.policyAssignments["test-policy-assignment-2"])
 }
+
+func TestCopyMap(t *testing.T) {
+	// Create a new map.
+	m := map[string]int{
+		"foo": 1,
+		"bar": 2,
+		"baz": 3,
+	}
+
+	// Copy the map.
+	m2 := copyMap(m)
+
+	// Verify that the original map and the copied map are equal.
+	assert.Equal(t, m, m2)
+
+	// Modify the original map.
+	m["foo"] = 4
+
+	// Verify that the original map and the copied map are no longer equal.
+	assert.NotEqual(t, m, m2)
+}
