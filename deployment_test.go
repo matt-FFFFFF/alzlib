@@ -2,13 +2,13 @@ package alzlib
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armpolicy"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWellKnownParameterReplacement demonstrates the replacement of well-known parameters.
@@ -19,9 +19,7 @@ func TestWellKnownParameterReplacement(t *testing.T) {
 	defer cancel()
 	dirfs := os.DirFS("./testdata/wellknownparameters")
 	err := az.Init(ctx, dirfs)
-	if err != nil {
-		fmt.Println(err)
-	}
+	require.NoError(t, err)
 
 	vals := &WellKnownPolicyValues{
 		DefaultLocation:                "eastus",
