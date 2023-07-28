@@ -45,7 +45,7 @@ func TestGeneratePolicyAssignmentAdditionalRoleAssignments(t *testing.T) {
 		policyDefinitions:    make(map[string]*armpolicy.Definition),
 		policySetDefinitions: make(map[string]*armpolicy.SetDefinition),
 		policyAssignments:    make(map[string]*armpolicy.Assignment),
-		mu:                   &sync.RWMutex{},
+		mu:                   sync.RWMutex{},
 	}
 
 	// create a new policy assignment for the definition.
@@ -255,7 +255,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 		wkpv: &WellKnownPolicyValues{
 			DefaultLocation: "eastus",
 		},
-		mu: &sync.RWMutex{},
+		mu: sync.RWMutex{},
 	}
 	pd2mg := map[string]string{
 		"pd1": "mg1",
@@ -300,7 +300,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 		wkpv: &WellKnownPolicyValues{
 			DefaultLocation: "eastus",
 		},
-		mu: &sync.RWMutex{},
+		mu: sync.RWMutex{},
 	}
 	pd2mg = map[string]string{
 		"pd1": "mg1",
@@ -342,7 +342,7 @@ func TestModifyPolicyAssignments(t *testing.T) {
 		wkpv: &WellKnownPolicyValues{
 			DefaultLocation: "eastus",
 		},
-		mu: &sync.RWMutex{},
+		mu: sync.RWMutex{},
 	}
 	pd2mg = map[string]string{}
 	psd2mg = map[string]string{}
@@ -538,7 +538,7 @@ func TestUpsertPolicyAssignments(t *testing.T) {
 	// Create a new AlzManagementGroup instance.
 	alzmg := &AlzManagementGroup{
 		policyAssignments: make(map[string]*armpolicy.Assignment),
-		mu:                &sync.RWMutex{},
+		mu:                sync.RWMutex{},
 	}
 
 	// Create a new policy assignment to upsert.
@@ -603,20 +603,23 @@ func TestUpsertPolicyAssignments(t *testing.T) {
 
 func TestCopyMap(t *testing.T) {
 	// Create a new map.
-	m := map[string]int{
-		"foo": 1,
-		"bar": 2,
-		"baz": 3,
+	m := map[string]*int{
+		"foo": to.Ptr(1),
+		"bar": to.Ptr(2),
+		"baz": to.Ptr(3),
 	}
 
 	// Copy the map.
-	m2 := copyMap(m)
+	m2 := copyMap[string, int](m)
 
 	// Verify that the original map and the copied map are equal.
-	assert.Equal(t, m, m2)
+	assert.Equal(t, len(m), len(m2))
+	for k, v := range m {
+		assert.Equal(t, *v, m2[k])
+	}
 
 	// Modify the original map.
-	m["foo"] = 4
+	m["foo"] = to.Ptr(4)
 
 	// Verify that the original map and the copied map are no longer equal.
 	assert.NotEqual(t, m, m2)

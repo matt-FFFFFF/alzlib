@@ -30,7 +30,7 @@ type AlzManagementGroup struct {
 	parent                                      *AlzManagementGroup
 	parentExternal                              *string
 	wkpv                                        *WellKnownPolicyValues
-	mu                                          *sync.RWMutex
+	mu                                          sync.RWMutex
 }
 
 // PolicyAssignmentAdditionalRoleAssignments represents the additional role assignments that need to be created for a management group.
@@ -93,28 +93,33 @@ func (alzmg *AlzManagementGroup) ResourceId() string {
 }
 
 // GetPolicyAssignmentMap returns a copy of the policy assignments map.
-func (alzmg *AlzManagementGroup) GetPolicyAssignmentMap() map[string]*armpolicy.Assignment {
-	return copyMap[string, *armpolicy.Assignment](alzmg.policyAssignments)
+func (alzmg *AlzManagementGroup) GetPolicyAssignmentMap() map[string]armpolicy.Assignment {
+	return copyMap[string, armpolicy.Assignment](alzmg.policyAssignments)
 }
 
 // GetPolicyDefinitionsMap returns a copy of the policy definitions map.
-func (alzmg *AlzManagementGroup) GetPolicyDefinitionsMap() map[string]*armpolicy.Definition {
-	return copyMap[string, *armpolicy.Definition](alzmg.policyDefinitions)
+func (alzmg *AlzManagementGroup) GetPolicyDefinitionsMap() map[string]armpolicy.Definition {
+	return copyMap[string, armpolicy.Definition](alzmg.policyDefinitions)
 }
 
 // GetPolicySetDefinitionsMap returns a copy of the policy definitions map.
-func (alzmg *AlzManagementGroup) GetPolicySetDefinitionsMap() map[string]*armpolicy.SetDefinition {
-	return copyMap[string, *armpolicy.SetDefinition](alzmg.policySetDefinitions)
+func (alzmg *AlzManagementGroup) GetPolicySetDefinitionsMap() map[string]armpolicy.SetDefinition {
+	return copyMap[string, armpolicy.SetDefinition](alzmg.policySetDefinitions)
 }
 
 // GetRoleDefinitionsMap returns a copy of the role definitions map.
-func (alzmg *AlzManagementGroup) GetRoleDefinitionsMap() map[string]*armauthorization.RoleDefinition {
-	return copyMap[string, *armauthorization.RoleDefinition](alzmg.roleDefinitions)
+func (alzmg *AlzManagementGroup) GetRoleDefinitionsMap() map[string]armauthorization.RoleDefinition {
+	return copyMap[string, armauthorization.RoleDefinition](alzmg.roleDefinitions)
 }
 
 // GetRoleAssignmentsMap returns a copy of the role Assignments map.
-func (alzmg *AlzManagementGroup) GetRoleAssignmentsMap() map[string]*armauthorization.RoleAssignment {
-	return copyMap[string, *armauthorization.RoleAssignment](alzmg.roleAssignments)
+func (alzmg *AlzManagementGroup) GetRoleAssignmentsMap() map[string]armauthorization.RoleAssignment {
+	return copyMap[string, armauthorization.RoleAssignment](alzmg.roleAssignments)
+}
+
+// GetAdditionalRoleAssignmentsByPolicyAssignmentMap returns a copy of the additional role assignments by policy assignment map.
+func (alzmg *AlzManagementGroup) GetAdditionalRoleAssignmentsByPolicyAssignmentMap() map[string]PolicyAssignmentAdditionalRoleAssignments {
+	return copyMap[string, PolicyAssignmentAdditionalRoleAssignments](alzmg.additionalRoleAssignmentsByPolicyAssignment)
 }
 
 // GeneratePolicyAssignmentAdditionalRoleAssignments generates the additional role assignment data needed for the policy assignments
@@ -489,14 +494,14 @@ func newAlzManagementGroup() *AlzManagementGroup {
 		policyAssignments:    make(map[string]*armpolicy.Assignment),
 		roleAssignments:      make(map[string]*armauthorization.RoleAssignment),
 		roleDefinitions:      make(map[string]*armauthorization.RoleDefinition),
-		mu:                   &sync.RWMutex{},
+		mu:                   sync.RWMutex{},
 	}
 }
 
-func copyMap[E comparable, T any](m map[E]T) map[E]T {
+func copyMap[E comparable, T any](m map[E]*T) map[E]T {
 	m2 := make(map[E]T, len(m))
 	for k, v := range m {
-		m2[k] = v
+		m2[k] = *v
 	}
 	return m2
 }
