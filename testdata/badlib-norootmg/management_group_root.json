@@ -1,9 +1,0 @@
-{
-  "name": "myroot",
-  "display_name": "myroot",
-  "archetype_name": "es_root",
-  "children": [
-    "platform",
-    "landing-zones"
-  ]
-}
